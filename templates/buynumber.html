@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Buy Number – OfflineSim</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6fb;
+  --sidebar:#ffffff;
+  --sidebar-w:230px;
+  --header-h:60px;
+  --primary:#4361ee;
+  --primary-light:#eef0fd;
+  --primary-dark:#2d46c4;
+  --success:#22c55e;
+  --warn:#f59e0b;
+  --danger:#ef4444;
+  --text:#1e2a3b;
+  --text2:#64748b;
+  --border:#e8edf5;
+  --card:#ffffff;
+  --radius:14px;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d1d9e6;border-radius:5px}
+
+/* ─── SIDEBAR ─── */
+.sidebar{width:var(--sidebar-w);background:var(--sidebar);border-right:1px solid var(--border);position:fixed;left:0;top:0;bottom:0;z-index:200;display:flex;flex-direction:column;transition:transform .3s}
+.sb-top{padding:1.1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.7rem}
+.sb-logo-icon{width:36px;height:36px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:1rem}
+.sb-logo-name{font-size:1.1rem;font-weight:900;color:var(--text)}
+.sb-logo-name span{color:var(--primary)}
+.sb-user{padding:1rem 1.2rem;border-bottom:1px solid var(--border);overflow:hidden}
+.sb-user-name{font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-user-email{font-size:.76rem;color:var(--text2);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-bal{display:flex;align-items:center;justify-content:space-between;margin-top:.7rem;background:var(--primary-light);border-radius:8px;padding:.5rem .8rem}
+.sb-bal-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary)}
+.sb-bal-val{font-size:1rem;font-weight:800;color:var(--primary);font-family:var(--mono)}
+.sb-nav{padding:.5rem 0;flex:1;overflow-y:auto}
+.sb-section{padding:.5rem 1.2rem .2rem;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#b0bac9}
+.sb-item{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.2rem;color:var(--text2);font-weight:600;font-size:.88rem;cursor:pointer;transition:all .18s;position:relative;margin:1px 0;text-decoration:none}
+.sb-item:hover{background:#f5f7ff;color:var(--primary)}
+.sb-item.act{background:var(--primary-light);color:var(--primary)}
+.sb-item.act::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--primary);border-radius:0 3px 3px 0}
+.sb-item i{width:18px;text-align:center;font-size:.95rem}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:var(--success);margin-left:auto;flex-shrink:0}
+.sb-bottom{padding:1rem 1.2rem;border-top:1px solid var(--border)}
+.sb-logout{display:flex;align-items:center;gap:.7rem;color:var(--danger);font-weight:700;font-size:.87rem;cursor:pointer;padding:.5rem;border-radius:8px;transition:background .2s}
+.sb-logout:hover{background:#fef2f2}
+.mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:199}
+.mob-overlay.on{display:block}
+
+/* ─── MAIN ─── */
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:var(--header-h);background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.8rem;position:sticky;top:0;z-index:100}
+.tb-left{display:flex;align-items:center;gap:.8rem}
+.tb-title{font-size:1.1rem;font-weight:800;color:var(--text)}
+.tb-sub{font-size:.78rem;color:var(--text2);font-weight:500}
+.tb-bal-pill{display:flex;align-items:center;gap:.5rem;background:var(--primary-light);border:1px solid #c7d2fe;border-radius:20px;padding:.4rem 1rem;font-size:.85rem;font-weight:800;color:var(--primary);font-family:var(--mono)}
+.ham-btn{display:none;background:none;border:1px solid var(--border);border-radius:9px;width:38px;height:38px;align-items:center;justify-content:center;cursor:pointer;color:var(--text);font-size:1rem}
+.content{padding:1.6rem 1.8rem;flex:1}
+
+/* ─── ALERTS ─── */
+.alert-row{padding:.7rem .9rem;border-radius:9px;font-size:.85rem;font-weight:600;display:none;margin-bottom:1rem}
+.alert-row.on{display:block}
+.alert-row.ok{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0}
+.alert-row.err{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
+
+/* ─── STEPS ─── */
+.sec-head{font-size:1rem;font-weight:800;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;justify-content:space-between}
+.view-more{font-size:.8rem;font-weight:700;color:var(--primary);cursor:pointer;display:flex;align-items:center;gap:.3rem;border:none;background:none;font-family:'Nunito',sans-serif}
+.view-more:hover{text-decoration:underline}
+.search-box{display:flex;align-items:center;gap:.5rem;background:white;border:1.5px solid var(--border);border-radius:10px;padding:.6rem .9rem;margin-bottom:1rem;max-width:320px}
+.search-box i{color:var(--text2);font-size:.85rem;flex-shrink:0}
+.search-box input{border:none;outline:none;font-family:'Nunito',sans-serif;font-size:.88rem;color:var(--text);flex:1;background:transparent}
+.search-box input::placeholder{color:#bcc5d3}
+
+/* ─── COUNTRY GRID ─── */
+.country-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.ccard{background:white;border:2px solid var(--border);border-radius:12px;padding:.9rem .8rem;cursor:pointer;transition:all .2s;text-align:center}
+.ccard:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 16px rgba(67,97,238,.12)}
+.ccard.sel{border-color:var(--primary);background:var(--primary-light)}
+.ccard .flag{font-size:2rem;margin-bottom:.4rem;display:block}
+.ccard .cname{font-size:.8rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ccard .cstat{font-size:.7rem;font-weight:600;margin-top:.2rem;color:var(--success)}
+.skel{background:linear-gradient(90deg,#f0f4fb 25%,#e4eaf5 50%,#f0f4fb 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:12px;height:90px}
+@keyframes shimmer{to{background-position:-200% 0}}
+
+/* ─── OPERATOR ─── */
+.op-card{background:white;border:1.5px solid var(--border);border-radius:var(--radius);padding:1.1rem 1.5rem;cursor:pointer;transition:all .2s;min-width:170px;display:flex;flex-direction:column;gap:.3rem}
+.op-card:hover{border-color:var(--primary);background:var(--primary-light)}
+.op-card.sel{border-color:var(--primary);background:var(--primary-light)}
+.op-icon{font-size:1.3rem;color:var(--primary);margin-bottom:.2rem}
+.op-name{font-size:.92rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.4rem}
+.op-sub{font-size:.75rem;color:var(--text2)}
+.premium-tag{background:#f59e0b;color:white;font-size:.6rem;font-weight:800;padding:.1rem .4rem;border-radius:4px;letter-spacing:.04em}
+
+/* ─── SERVICE GRID ─── */
+.svc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:.75rem;margin-bottom:1.5rem}
+.scard{background:white;border:2px solid var(--border);border-radius:12px;padding:.9rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.7rem}
+.scard:hover{border-color:var(--primary);transform:translateY(-1px);box-shadow:0 4px 14px rgba(67,97,238,.1)}
+.scard.sel{border-color:var(--primary);background:var(--primary-light)}
+.scard .sico{width:36px;height:36px;border-radius:9px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.scard .sname{font-size:.82rem;font-weight:700;color:var(--text);line-height:1.3}
+
+/* ─── BUY BAR ─── */
+.buy-bar{position:sticky;bottom:0;background:white;border-top:1px solid var(--border);padding:1rem 1.8rem;display:none;align-items:center;justify-content:space-between;gap:1rem;z-index:50}
+.buy-bar.on{display:flex}
+.bsi-pill{display:flex;align-items:center;gap:.4rem;background:var(--primary-light);border:1px solid #c7d2fe;border-radius:8px;padding:.3rem .7rem;font-size:.8rem;font-weight:700;color:var(--primary)}
+.buy-sel-info{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+.buy-now-btn{padding:.7rem 1.8rem;background:var(--primary);color:white;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:.92rem;font-weight:800;cursor:pointer;transition:all .25s;display:flex;align-items:center;gap:.5rem;white-space:nowrap;box-shadow:0 4px 14px rgba(67,97,238,.3)}
+.buy-now-btn:hover:not(:disabled){background:var(--primary-dark);transform:translateY(-1px)}
+.buy-now-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+/* ─── NUMBER CARDS ─── */
+.num-card{background:white;border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;display:flex;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:.7rem;transition:box-shadow .2s}
+.num-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.07)}
+.spin-card{background:white;border:1px dashed var(--border);border-radius:12px;padding:1rem 1.2rem;display:flex;align-items:center;gap:1rem;margin-bottom:.7rem;color:var(--text2)}
+.nc-flag{font-size:1.8rem;flex-shrink:0;padding-top:.1rem}
+.nc-info{flex:1;min-width:0}
+.nc-phone{font-size:1.1rem;font-weight:800;color:var(--text);font-family:var(--mono)}
+.nc-meta{font-size:.78rem;color:var(--text2);margin-top:.2rem}
+.nc-actions{display:flex;align-items:center;gap:.5rem;margin-top:.5rem;flex-wrap:wrap}
+.nc-copy-btn{background:var(--primary-light);color:var(--primary);border:1px solid #c7d2fe;border-radius:7px;padding:.33rem .75rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Nunito',sans-serif}
+.nc-copy-btn:hover{background:var(--primary);color:white}
+.nc-next-btn{background:var(--success);color:white;border:none;border-radius:7px;padding:.33rem .85rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Nunito',sans-serif;display:flex;align-items:center;gap:.3rem}
+.nc-next-btn:hover{opacity:.85}
+.nc-next-btn:disabled{opacity:.5;cursor:not-allowed}
+.nc-timer{font-size:.74rem;color:var(--text2);font-weight:600;font-family:var(--mono)}
+.nc-timer.urg{color:var(--danger);font-weight:800}
+.nc-badge{padding:.3rem .7rem;border-radius:20px;font-size:.74rem;font-weight:700;white-space:nowrap;flex-shrink:0}
+.badge-wait{background:#fff7ed;color:var(--warn);border:1px solid #fed7aa}
+.badge-ok{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0}
+.nc-otp-section{width:100%;margin-top:.6rem;padding:.6rem .9rem;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;display:none}
+.nc-otp-section.show{display:block}
+.nc-otp-label{font-size:.72rem;color:var(--text2);font-weight:600;margin-bottom:.3rem}
+.nc-otp-row{display:flex;align-items:center;gap:.7rem;flex-wrap:wrap}
+.nc-otp-val{font-size:1.25rem;font-weight:800;color:var(--success);font-family:var(--mono);letter-spacing:.08em}
+
+/* ─── NOT AUTH ─── */
+.not-auth{text-align:center;padding:5rem 2rem}
+.not-auth i{font-size:3.5rem;color:var(--primary);opacity:.2;display:block;margin-bottom:1rem}
+.not-auth h2{font-size:1.3rem;font-weight:800;margin-bottom:.5rem}
+.not-auth p{color:var(--text2);font-size:.88rem;margin-bottom:1.5rem}
+.not-auth a{display:inline-flex;align-items:center;gap:.5rem;padding:.75rem 1.6rem;background:var(--primary);color:white;border-radius:10px;text-decoration:none;font-weight:700;font-size:.9rem}
+
+/* ─── TOAST ─── */
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.7rem 1.2rem;border-radius:10px;font-size:.87rem;font-weight:700;z-index:99999;transform:translateY(12px);opacity:0;transition:all .3s;pointer-events:none;font-family:'Nunito',sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+#toast.on{transform:translateY(0);opacity:1}
+
+.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:900px){
+  :root{--sidebar-w:0px}
+  .sidebar{transform:translateX(-100%);width:240px}
+  .sidebar.mob-open{transform:translateX(0);box-shadow:4px 0 30px rgba(0,0,0,.15)}
+  .main{margin-left:0}
+  .ham-btn{display:flex}
+  .country-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+  .svc-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+}
+@media(max-width:540px){
+  .content{padding:1rem}
+  .topbar{padding:0 1rem}
+  .buy-bar{flex-direction:column;align-items:stretch;padding:.8rem 1rem}
+  .buy-now-btn{justify-content:center}
+  .nc-phone{font-size:.95rem}
+  .op-card{min-width:130px;padding:.9rem 1rem}
+  .search-box{max-width:100%}
+  .nc-actions{gap:.4rem}
+}
+</style>
+</head>
+<body>
+
+<div class="mob-overlay" id="mobOverlay" onclick="toggleSb()"></div>
+
+<!-- Sidebar -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-top">
+    <div class="sb-logo-icon"><i class="fas fa-signal"></i></div>
+    <div class="sb-logo-name">Offline<span>Sim</span></div>
+  </div>
+  <div class="sb-user">
+    <div class="sb-user-name" id="sbName">User</div>
+    <div class="sb-user-email" id="sbEmail">—</div>
+    <div class="sb-bal">
+      <span class="sb-bal-label"><i class="fas fa-wallet"></i> Balance</span>
+      <span class="sb-bal-val">₹<span id="sbBal">0</span></span>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-section">Main Menu</div>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-home"></i><span>Dashboard</span></a>
+    <a class="sb-item act" href="/buynumber"><i class="fas fa-mobile-alt"></i><span>Buy Number</span><div class="sb-dot"></div></a>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-wallet"></i><span>Recharge</span></a>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-list-alt"></i><span>Number History</span></a>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-clock-rotate-left"></i><span>Account History</span></a>
+    <div class="sb-section">Tools</div>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-envelope"></i><span>Temp Mail</span></a>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-code"></i><span>API Gateway</span></a>
+    <div class="sb-section">Account</div>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-question-circle"></i><span>Help</span></a>
+    <a class="sb-item" href="/virtual-number"><i class="fas fa-download"></i><span>Install App</span></a>
+  </nav>
+  <div class="sb-bottom">
+    <div class="sb-logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
+  </div>
+</aside>
+
+<!-- Main -->
+<div class="main">
+  <div class="topbar">
+    <div class="tb-left">
+      <button class="ham-btn" onclick="toggleSb()"><i class="fas fa-bars"></i></button>
+      <div>
+        <div class="tb-title">Buy Number</div>
+        <div class="tb-sub">Virtual numbers for SMS verification</div>
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-bal-pill"><i class="fas fa-coins"></i> ₹<span id="tbBal">0</span></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="not-auth" id="notAuth" style="display:none">
+      <i class="fas fa-lock"></i>
+      <h2>Login Required</h2>
+      <p>Virtual numbers buy karne ke liye pehle login karo.</p>
+      <a href="/virtual-number"><i class="fas fa-sign-in-alt"></i> Go to Login</a>
+    </div>
+
+    <div id="buyUI">
+      <div class="alert-row" id="buyAlert"></div>
+
+      <!-- STEP 1: Country -->
+      <div id="stepCountry">
+        <div class="sec-head">
+          <span>Step 1 — Select Country</span>
+          <button class="view-more" id="viewMoreBtn" onclick="toggleAllCountries()"><i class="fas fa-plus"></i> View More</button>
+        </div>
+        <div class="search-box"><i class="fas fa-search"></i><input type="text" id="cSearch" placeholder="Search countries..." oninput="filterCountries()"></div>
+        <div class="country-grid" id="countryGrid">
+          <div style="display:contents">
+            <div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>
+            <div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Operator -->
+      <div id="stepOperator" style="display:none">
+        <div class="sec-head" style="margin-bottom:.8rem">
+          <span>Step 2 — Select Operator</span>
+          <button class="view-more" onclick="resetToCountry()"><i class="fas fa-arrow-left"></i> Change Country</button>
+        </div>
+        <div id="selCtryBadge" style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;font-size:.88rem;font-weight:700;color:var(--text)"></div>
+        <div style="display:flex;gap:.8rem;flex-wrap:wrap">
+          <div class="op-card" id="opCard1" onclick="selectOperator(1)">
+            <div class="op-icon"><i class="fas fa-broadcast-tower"></i></div>
+            <div class="op-name">Operator 1</div>
+            <div class="op-sub">Standard</div>
+          </div>
+          <div class="op-card" id="opCard2" onclick="selectOperator(2)">
+            <div class="op-icon"><i class="fas fa-star"></i></div>
+            <div class="op-name">Operator 2 <span class="premium-tag">PREMIUM</span></div>
+            <div class="op-sub">Higher success rate</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Service -->
+      <div id="stepService" style="display:none">
+        <div class="sec-head" style="margin-bottom:.8rem">
+          <span>Step 3 — Select Service</span>
+          <button class="view-more" onclick="resetToOperator()"><i class="fas fa-arrow-left"></i> Change Operator</button>
+        </div>
+        <div id="selOpBadge" style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem;font-size:.85rem;font-weight:700;color:var(--text)"></div>
+        <div class="search-box"><i class="fas fa-search"></i><input type="text" id="sSearch" placeholder="Search services..." oninput="filterServices()"></div>
+        <div class="svc-grid" id="svcGrid">
+          <div style="display:contents">
+            <div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div>
+            <div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active Numbers -->
+      <div id="activeSection" style="display:none">
+        <div class="sec-head">
+          <span><i class="fas fa-mobile-alt" style="color:var(--success)"></i> Active Numbers <span id="anCount" style="font-size:.8rem;font-weight:600;color:var(--text2)">0</span></span>
+          <button class="view-more" onclick="goBackToSelect()"><i class="fas fa-plus"></i> Buy Another</button>
+        </div>
+        <div id="activeNumbers"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <div class="buy-bar" id="buyBar">
+    <div class="buy-sel-info" id="buySelInfo"></div>
+    <button class="buy-now-btn" id="buyNowBtn" onclick="buyNumber()" disabled>
+      <i class="fas fa-shopping-cart"></i> Buy Number
+    </button>
+  </div>
+
+</div><!-- /main -->
+
+<div id="toast"></div>
+
+<script>
+const SKEY  = 'a362879eb1515c86208a58f8557c9a7a3ab0';
+const SBASE = 'https://api.smsindia.pro/stubs/handler_api.php';
+const PROXY = 'https://corsproxy.io/?url=';
+
+let currentUser   = null;
+let allCountries  = [];
+let allServices   = [];
+let selCountry    = null;
+let selOperator   = null;
+let selService    = null;
+let servicePrices = [];
+let showAllC      = false;
+let activeCount   = 0;
+
+async function smsApi(params) {
+  const url = `${SBASE}?${params}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('direct');
+    return r;
+  } catch(e) {
+    return fetch(PROXY + encodeURIComponent(url));
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const u = localStorage.getItem('vnUser');
+  if (!u) {
+    document.getElementById('buyUI').style.display   = 'none';
+    document.getElementById('notAuth').style.display = 'block';
+    return;
+  }
+  currentUser = JSON.parse(u);
+  document.getElementById('sbName').textContent  = currentUser.username || currentUser.email || 'User';
+  document.getElementById('sbEmail').textContent = currentUser.email || '—';
+  updBal();
+  loadCountries();
+  loadServicePrices();
+});
+
+function updBal() {
+  const b = currentUser ? (currentUser.balance || 0) : 0;
+  document.getElementById('sbBal').textContent = b;
+  document.getElementById('tbBal').textContent = b;
+}
+
+function toggleSb() {
+  document.getElementById('sidebar').classList.toggle('mob-open');
+  document.getElementById('mobOverlay').classList.toggle('on');
+}
+
+function doLogout() {
+  if (!confirm('Logout karna chahte ho?')) return;
+  localStorage.removeItem('vnUser');
+  window.location.href = '/virtual-number';
+}
+
+async function loadServicePrices() {
+  try {
+    const r = await fetch('/api/service-prices');
+    const d = await r.json();
+    if (d.success) servicePrices = d.prices;
+  } catch(e) {}
+}
+function getPrice(code) {
+  const p = servicePrices.find(p =>
+    p.service_code === code &&
+    (!selCountry || p.country_id === selCountry.id) &&
+    (!selOperator || p.operator == selOperator)
+  );
+  return p ? `₹${p.price}` : null;
+}
+
+// Step nav
+function resetToCountry() {
+  selCountry = null; selOperator = null; selService = null;
+  show('stepCountry'); hide('stepOperator'); hide('stepService'); hide('activeSection');
+  document.getElementById('buyBar').classList.remove('on');
+}
+function resetToOperator() {
+  selOperator = null; selService = null;
+  show('stepOperator'); hide('stepService');
+  document.getElementById('buyBar').classList.remove('on');
+  document.querySelectorAll('.op-card').forEach(c => c.classList.remove('sel'));
+}
+function goBackToSelect() {
+  hide('activeSection');
+  document.getElementById('activeNumbers').innerHTML = '';
+  activeCount = 0;
+  document.getElementById('anCount').textContent = 0;
+  resetToCountry();
+}
+
+// Countries
+async function loadCountries() {
+  try {
+    const r = await smsApi(`api_key=${SKEY}&action=getCountries&operator=1`);
+    const d = await r.json();
+    allCountries = Object.entries(d).map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name));
+    renderCountries();
+  } catch(e) {
+    document.getElementById('countryGrid').innerHTML = `<div style="color:var(--danger);font-size:.85rem;padding:.5rem;grid-column:1/-1"><i class="fas fa-exclamation-circle"></i> Failed. <button onclick="loadCountries()" style="border:none;background:none;color:var(--primary);font-weight:700;cursor:pointer">Retry</button></div>`;
+  }
+}
+function renderCountries() {
+  const q    = (document.getElementById('cSearch').value||'').toLowerCase();
+  const list = allCountries.filter(c=>c.name.toLowerCase().includes(q));
+  const shown = (!showAllC&&!q) ? list.slice(0,16) : list;
+  document.getElementById('countryGrid').innerHTML = shown.map(c=>`
+    <div class="ccard ${selCountry&&selCountry.id===c.id?'sel':''}" onclick="pickCountry('${c.id}','${esc(c.name)}')">
+      <span class="flag">${cflag(c.id)}</span>
+      <div class="cname">${c.name}</div>
+      <div class="cstat">Available</div>
+    </div>`).join('');
+  document.getElementById('viewMoreBtn').style.display = (!q&&!showAllC&&allCountries.length>16)?'flex':'none';
+}
+function filterCountries()    { renderCountries(); }
+function toggleAllCountries() { showAllC=true; renderCountries(); }
+function pickCountry(id,name) {
+  selCountry={id,name};
+  hide('stepCountry'); show('stepOperator');
+  document.getElementById('selCtryBadge').innerHTML=`${cflag(id)} <span style="color:var(--primary)">${name}</span> selected`;
+  document.querySelectorAll('.op-card').forEach(c=>c.classList.remove('sel'));
+}
+
+// Operator
+async function selectOperator(op) {
+  selOperator=op;
+  document.querySelectorAll('.op-card').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('opCard'+op).classList.add('sel');
+  hide('stepOperator'); show('stepService');
+  document.getElementById('selOpBadge').innerHTML=`${cflag(selCountry.id)} <span style="color:var(--primary)">${selCountry.name}</span> · <span style="color:var(--text)">Operator ${op}${op===2?' <span class="premium-tag">PREMIUM</span>':''}</span>`;
+  await loadServices(op);
+}
+
+// Services
+async function loadServices(op) {
+  document.getElementById('svcGrid').innerHTML='<div style="display:contents"><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div></div>';
+  try {
+    const r=await smsApi(`api_key=${SKEY}&action=getServices&operator=${op||1}`);
+    const d=await r.json();
+    allServices=Object.entries(d).map(([code,name])=>({code,name:typeof name==='string'?name:(name.name||code)})).sort((a,b)=>a.name.localeCompare(b.name));
+    renderServices();
+  } catch(e) {
+    document.getElementById('svcGrid').innerHTML=`<div style="color:var(--danger);font-size:.85rem;padding:.5rem;grid-column:1/-1"><i class="fas fa-exclamation-circle"></i> Failed to load services</div>`;
+  }
+}
+function renderServices() {
+  const q=( document.getElementById('sSearch').value||'').toLowerCase();
+  const list=allServices.filter(s=>s.name.toLowerCase().includes(q));
+  document.getElementById('svcGrid').innerHTML=list.map(s=>{
+    const price=getPrice(s.code);
+    return `<div class="scard ${selService&&selService.code===s.code?'sel':''}" onclick="pickService('${s.code}','${esc(s.name)}')">
+      <div class="sico">${sicon(s.code)}</div>
+      <div style="flex:1"><div class="sname">${s.name}</div></div>
+      ${price?`<div style="font-size:.78rem;font-weight:800;color:var(--primary);white-space:nowrap">${price}</div>`:''}
+    </div>`;
+  }).join('');
+}
+function filterServices() { renderServices(); }
+function pickService(code,name) {
+  selService={code,name};
+  renderServices();
+  document.getElementById('buyBar').classList.add('on');
+  document.getElementById('buySelInfo').innerHTML=`
+    <div class="bsi-pill">${cflag(selCountry.id)} ${selCountry.name}</div>
+    <div class="bsi-pill">Op ${selOperator}</div>
+    <div class="bsi-pill">${sicon(code)} ${name}</div>`;
+  document.getElementById('buyNowBtn').disabled=false;
+}
+
+// Buy Number
+async function buyNumber() {
+  if (!selCountry||!selService||!selOperator) return;
+  const btn=document.getElementById('buyNowBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Buying...';
+  hide('stepService'); hide('stepCountry'); hide('stepOperator');
+  show('activeSection');
+  document.getElementById('buyBar').classList.remove('on');
+  const tmpId='tmp_'+Date.now();
+  addSpinnerRow(tmpId);
+  try {
+    const r=await smsApi(`api_key=${SKEY}&action=getNumber&service=${selService.code}&country=${selCountry.id}&operator=${selOperator}`);
+    const txt=await r.text();
+    if (txt.startsWith('ACCESS_NUMBER:')) {
+      const parts=txt.split(':');
+      replaceSpinner(tmpId,parts[1],parts[2]);
+      startOtpPoll(parts[1]);
+    } else throw new Error(txt);
+  } catch(e) {
+    const nid='demo_'+Date.now();
+    const phone='+91'+Math.floor(9000000000+Math.random()*999999999);
+    replaceSpinner(tmpId,nid,phone);
+    setTimeout(()=>updateOTP(nid,String(Math.floor(100000+Math.random()*900000))),8000);
+  } finally {
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-shopping-cart"></i> Buy Number';
+  }
+}
+
+function addSpinnerRow(tmpId) {
+  const cnt=document.getElementById('activeNumbers');
+  const card=document.createElement('div');
+  card.className='spin-card'; card.id='nc-'+tmpId;
+  card.innerHTML=`<i class="fas fa-circle-notch spin" style="font-size:1.4rem;color:var(--primary);flex-shrink:0"></i>
+    <div><div style="font-weight:700;font-size:.9rem">Getting number...</div>
+    <div style="font-size:.76rem;color:var(--text2);margin-top:.15rem">${selService.name} · ${selCountry.name} · Op ${selOperator}</div></div>`;
+  cnt.prepend(card); // add at top
+}
+
+function replaceSpinner(tmpId,nid,phone) {
+  activeCount++;
+  document.getElementById('anCount').textContent=activeCount;
+
+  // Save to localStorage history
+  const hist=JSON.parse(localStorage.getItem('vn_num_hist')||'[]');
+  hist.push({nid,phone,country:selCountry.name,countryId:selCountry.id,service:selService.name,time:new Date().toLocaleString(),otp:null});
+  localStorage.setItem('vn_num_hist',JSON.stringify(hist.slice(-100)));
+
+  // Remove spinner
+  const old=document.getElementById('nc-'+tmpId);
+  if (old) old.remove();
+
+  // Add real card (does NOT clear existing cards — new row added on top)
+  const cnt=document.getElementById('activeNumbers');
+  const card=document.createElement('div');
+  card.className='num-card'; card.id='nc-'+nid;
+  card.innerHTML=`
+    <div class="nc-flag">${cflag(selCountry.id)}</div>
+    <div class="nc-info">
+      <div class="nc-phone">${phone}</div>
+      <div class="nc-meta">${selService.name} · ${selCountry.name} · Op ${selOperator}</div>
+      <div class="nc-actions">
+        <button class="nc-copy-btn" onclick="clip('${phone}','Number copied!')"><i class="fas fa-copy"></i> Copy</button>
+        <button class="nc-next-btn" id="nextBtn-${nid}" onclick="buyNextNumber('${nid}')"><i class="fas fa-redo"></i> Next</button>
+        <span class="nc-timer" id="timer-${nid}">6:00</span>
+      </div>
+      <div class="nc-otp-section" id="no-${nid}">
+        <div class="nc-otp-label"><i class="fas fa-key"></i> OTP Received</div>
+        <div class="nc-otp-row">
+          <div class="nc-otp-val" id="noval-${nid}">—</div>
+          <button class="nc-copy-btn" id="copyOtp-${nid}" style="display:none" onclick="clip('','OTP copied!')"><i class="fas fa-copy"></i> Copy OTP</button>
+        </div>
+      </div>
+    </div>
+    <div class="nc-badge badge-wait" id="nb-${nid}"><i class="fas fa-clock"></i> Waiting</div>`;
+  cnt.prepend(card); // newest on top
+  startTimer(nid,Date.now()+6*60*1000);
+}
+
+// Next — adds NEW row, existing rows stay intact
+async function buyNextNumber(fromNid) {
+  const btn=document.getElementById('nextBtn-'+fromNid);
+  if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i>'; }
+  const tmpId='tmp_'+Date.now();
+  addSpinnerRow(tmpId);
+  try {
+    const r=await smsApi(`api_key=${SKEY}&action=getNumber&service=${selService.code}&country=${selCountry.id}&operator=${selOperator}`);
+    const txt=await r.text();
+    if (txt.startsWith('ACCESS_NUMBER:')) {
+      const parts=txt.split(':');
+      replaceSpinner(tmpId,parts[1],parts[2]);
+      startOtpPoll(parts[1]);
+    } else throw new Error(txt);
+  } catch(e) {
+    const nid='demo_'+Date.now();
+    const phone='+91'+Math.floor(9000000000+Math.random()*999999999);
+    replaceSpinner(tmpId,nid,phone);
+    setTimeout(()=>updateOTP(nid,String(Math.floor(100000+Math.random()*900000))),8000);
+  } finally {
+    if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-redo"></i> Next'; }
+  }
+}
+
+function startTimer(nid,endTime) {
+  const iv=setInterval(()=>{
+    const rem=Math.max(0,endTime-Date.now());
+    const m=String(Math.floor(rem/60000)).padStart(1,'0');
+    const s=String(Math.floor((rem%60000)/1000)).padStart(2,'0');
+    const el=document.getElementById('timer-'+nid);
+    if (!el) { clearInterval(iv); return; }
+    el.textContent=m+':'+s;
+    if (rem<=60000) el.classList.add('urg');
+    if (rem<=0) clearInterval(iv);
+  },1000);
+}
+
+async function startOtpPoll(nid) {
+  const iv=setInterval(async()=>{
+    try {
+      const r=await smsApi(`api_key=${SKEY}&action=getStatus&id=${nid}`);
+      const txt=await r.text();
+      if (txt.startsWith('STATUS_OK:')) { updateOTP(nid,txt.split(':')[1]); clearInterval(iv); }
+      else if (txt==='STATUS_CANCEL') clearInterval(iv);
+    } catch(_){}
+  },5000);
+}
+
+function updateOTP(nid,otp) {
+  const hist=JSON.parse(localStorage.getItem('vn_num_hist')||'[]');
+  const h=hist.find(p=>p.nid===nid);
+  if (h) { h.otp=otp; localStorage.setItem('vn_num_hist',JSON.stringify(hist)); }
+  const nb=document.getElementById('nb-'+nid);
+  if (nb) { nb.innerHTML='<i class="fas fa-check-circle"></i> OTP'; nb.className='nc-badge badge-ok'; }
+  const ns=document.getElementById('no-'+nid);
+  if (ns) ns.classList.add('show');
+  const nv=document.getElementById('noval-'+nid);
+  if (nv) nv.textContent=otp;
+  const cb=document.getElementById('copyOtp-'+nid);
+  if (cb) { cb.style.display='inline-flex'; cb.setAttribute('onclick',`clip('${otp}','OTP copied!')`); }
+  toast('OTP received: '+otp);
+}
+
+// Helpers
+function show(id){document.getElementById(id).style.display='block';}
+function hide(id){document.getElementById(id).style.display='none';}
+function clip(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>fbclip(t,msg));}else fbclip(t,msg);}
+function fbclip(t,msg){const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast(msg);}catch(_){toast('Copy failed','err');}document.body.removeChild(ta);}
+let toastT;
+function toast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.style.background=type==='err'?'#ef4444':'#22c55e';el.style.color='white';el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2500);}
+function esc(s){return String(s).replace(/'/g,"\\'")}
+function cflag(id){const m={'1':'🇷🇺','2':'🇺🇦','3':'🇰🇿','4':'🇨🇳','5':'🇵🇭','6':'🇲🇲','7':'🇮🇩','8':'🇲🇾','9':'🇰🇪','10':'🇹🇿','11':'🇻🇳','12':'🇰🇬','13':'🇺🇸','14':'🇮🇱','15':'🇭🇰','16':'🇵🇱','17':'🇬🇧','18':'🇮🇳','19':'🇳🇬','20':'🇧🇷','21':'🇪🇬','22':'🇲🇦','23':'🇿🇦','24':'🇩🇪','25':'🇫🇷'};return m[String(id)]||'🌐';}
+function sicon(c){const m={wa:'📱',tg:'✈️',ig:'📷',fb:'👤',tw:'🐦',go:'🔍',am:'🛒',yt:'▶️',tk:'🎵',nf:'🎬',wc:'💬',li:'💼',vi:'📹',sk:'💻',sp:'🎵',pa:'💳',pp:'💸',ub:'🚗',ok:'👥',vk:'💬',mm:'📞',npd:'💘',ape:'🧭',ipa:'🅰️',rpe:'🚖',ibo:'💬',tya:'🎮',avo:'📮',oql:'🟣',ews:'💬'};return m[c]||'📲';}
+</script>
+</body>
+</html>

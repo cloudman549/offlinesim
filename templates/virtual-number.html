@@ -1,0 +1,1000 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Virtual Numbers – OfflineSim</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f4f6fb;
+  --sidebar:#ffffff;
+  --sidebar-w:230px;
+  --header-h:60px;
+  --primary:#4361ee;
+  --primary-light:#eef0fd;
+  --primary-dark:#2d46c4;
+  --success:#22c55e;
+  --warn:#f59e0b;
+  --danger:#ef4444;
+  --text:#1e2a3b;
+  --text2:#64748b;
+  --border:#e8edf5;
+  --card:#ffffff;
+  --radius:14px;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#d1d9e6;border-radius:5px}
+
+/* ─── AUTH ─── */
+.auth-wrap{display:none;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#f0f4ff 0%,#e8eeff 100%);position:relative;overflow:hidden}
+.auth-wrap.on{display:flex}
+.auth-bg-blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.5;pointer-events:none}
+.auth-bg-blob:nth-child(1){width:400px;height:400px;background:#c7d2fe;top:-80px;left:-80px}
+.auth-bg-blob:nth-child(2){width:350px;height:350px;background:#ddd6fe;bottom:-60px;right:-60px}
+.auth-card{background:white;border-radius:24px;padding:2.5rem;width:100%;max-width:420px;box-shadow:0 20px 60px rgba(67,97,238,.12);position:relative;z-index:2;animation:slideUp .4s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+.auth-logo-row{display:flex;align-items:center;justify-content:center;gap:.6rem;margin-bottom:1.8rem}
+.auth-logo-icon{width:44px;height:44px;background:var(--primary);border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-size:1.3rem}
+.auth-logo-name{font-size:1.5rem;font-weight:900;color:var(--text)}
+.auth-logo-name span{color:var(--primary)}
+.auth-h{font-size:1.6rem;font-weight:800;margin-bottom:.3rem;color:var(--text)}
+.auth-sub{font-size:.88rem;color:var(--text2);margin-bottom:1.8rem}
+.field{margin-bottom:1rem}
+.field label{display:block;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:.35rem}
+.inp-w{position:relative}
+.inp-ico{position:absolute;left:.9rem;top:50%;transform:translateY(-50%);color:var(--text2);font-size:.9rem;pointer-events:none}
+.finp{width:100%;padding:.8rem .9rem .8rem 2.6rem;border:1.5px solid var(--border);border-radius:10px;font-family:'Nunito',sans-serif;font-size:.92rem;color:var(--text);background:white;outline:none;transition:border-color .2s,box-shadow .2s}
+.finp:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(67,97,238,.1)}
+.finp::placeholder{color:#bcc5d3}
+.auth-btn{width:100%;padding:.9rem;border:none;border-radius:10px;background:var(--primary);color:white;font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;transition:all .25s;margin-top:.4rem;box-shadow:0 4px 14px rgba(67,97,238,.3)}
+.auth-btn:hover{background:var(--primary-dark);transform:translateY(-1px);box-shadow:0 6px 20px rgba(67,97,238,.4)}
+.auth-footer{text-align:center;margin-top:1.3rem;font-size:.87rem;color:var(--text2)}
+.auth-footer a{color:var(--primary);font-weight:700;cursor:pointer;text-decoration:none}
+.auth-alert{padding:.7rem .9rem;border-radius:8px;font-size:.85rem;font-weight:600;display:none;margin-bottom:1rem;text-align:center}
+.auth-alert.show{display:block}
+.auth-alert.err{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
+.auth-alert.ok{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0}
+
+/* ─── LAYOUT ─── */
+.app{display:none;min-height:100vh}
+.app.on{display:flex}
+
+/* sidebar */
+.sidebar{width:var(--sidebar-w);background:var(--sidebar);border-right:1px solid var(--border);position:fixed;left:0;top:0;bottom:0;z-index:200;display:flex;flex-direction:column;transition:transform .3s}
+.sb-top{padding:1.1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.7rem}
+.sb-logo-icon{width:36px;height:36px;background:var(--primary);border-radius:10px;display:flex;align-items:center;justify-content:center;color:white;font-size:1rem}
+.sb-logo-name{font-size:1.1rem;font-weight:900;color:var(--text)}
+.sb-logo-name span{color:var(--primary)}
+.sb-user{padding:1rem 1.2rem;border-bottom:1px solid var(--border);overflow:hidden}
+.sb-user-name{font-size:.88rem;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sb-user-email{font-size:.76rem;color:var(--text2);margin-top:.1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.sb-bal{display:flex;align-items:center;justify-content:space-between;margin-top:.7rem;background:var(--primary-light);border-radius:8px;padding:.5rem .8rem}
+.sb-bal-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary)}
+.sb-bal-val{font-size:1rem;font-weight:800;color:var(--primary);font-family:var(--mono)}
+.sb-nav{padding:.5rem 0;flex:1;overflow-y:auto}
+.sb-section{padding:.5rem 1.2rem .2rem;font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#b0bac9}
+.sb-item{display:flex;align-items:center;gap:.8rem;padding:.7rem 1.2rem;color:var(--text2);font-weight:600;font-size:.88rem;cursor:pointer;transition:all .18s;border-radius:0;position:relative;margin:1px 0}
+.sb-item:hover{background:#f5f7ff;color:var(--primary)}
+.sb-item.act{background:var(--primary-light);color:var(--primary)}
+.sb-item.act::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--primary);border-radius:0 3px 3px 0}
+.sb-item i{width:18px;text-align:center;font-size:.95rem}
+.sb-dot{width:7px;height:7px;border-radius:50%;background:var(--success);margin-left:auto;flex-shrink:0}
+.sb-bottom{padding:1rem 1.2rem;border-top:1px solid var(--border)}
+.sb-logout{display:flex;align-items:center;gap:.7rem;color:var(--danger);font-weight:700;font-size:.87rem;cursor:pointer;padding:.5rem;border-radius:8px;transition:background .2s}
+.sb-logout:hover{background:#fef2f2}
+
+/* main */
+.main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:var(--header-h);background:white;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 1.8rem;position:sticky;top:0;z-index:100}
+.tb-left{display:flex;align-items:center;gap:.8rem}
+.tb-title{font-size:1.1rem;font-weight:800;color:var(--text)}
+.tb-sub{font-size:.78rem;color:var(--text2);font-weight:500}
+.tb-right{display:flex;align-items:center;gap.8rem}
+.tb-bal-pill{display:flex;align-items:center;gap:.5rem;background:var(--primary-light);border:1px solid #c7d2fe;border-radius:20px;padding:.4rem 1rem;font-size:.85rem;font-weight:800;color:var(--primary);font-family:var(--mono)}
+.ham-btn{display:none;background:none;border:1px solid var(--border);border-radius:9px;width:38px;height:38px;align-items:center;justify-content:center;cursor:pointer;color:var(--text);font-size:1rem}
+.content{padding:1.6rem 1.8rem;flex:1}
+
+/* cards */
+.card{background:var(--card);border-radius:var(--radius);border:1px solid var(--border);overflow:hidden}
+.card-head{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-title{font-size:.95rem;font-weight:800;color:var(--text);display:flex;align-items:center;gap:.5rem}
+.card-title i{color:var(--primary)}
+.card-body{padding:1.2rem}
+
+/* page sections */
+.page{display:none}
+.page.on{display:block}
+
+/* ─── BUY NUMBER PAGE (moved to buynumber.html) ─── */
+
+/* ─── RECHARGE ─── */
+.rech-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;margin-bottom:1.4rem}
+.step-card{background:white;border:1px solid var(--border);border-radius:12px;padding:1.1rem;display:flex;align-items:flex-start;gap:.8rem}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--primary);color:white;font-size:.85rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.step-txt{font-size:.84rem;color:var(--text2);line-height:1.5}
+.qr-sec{background:white;border:1px solid var(--border);border-radius:12px;padding:1.4rem;display:flex;gap:1.5rem;align-items:flex-start;flex-wrap:wrap;margin-bottom:1.2rem}
+.qr-box{text-align:center;flex-shrink:0}
+.qr-img{width:180px;height:180px;object-fit:contain;border-radius:10px;background:#f8f9ff;padding:6px;display:none}
+.qr-ph{width:180px;height:180px;background:#f0f4fb;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem;color:var(--text2);font-size:.8rem}
+.qr-ph i{font-size:2.5rem;opacity:.25}
+.qr-right{flex:1;min-width:200px}
+.upi-row{display:flex;align-items:center;gap:.6rem;background:#f8f9ff;border:1px solid var(--border);border-radius:10px;padding:.7rem .9rem;margin-bottom:1rem;display:none}
+.upi-row.show{display:flex}
+.upi-val{flex:1;font-family:var(--mono);font-size:.88rem;color:var(--text);word-break:break-all}
+.copy-upi{background:var(--primary);color:white;border:none;border-radius:8px;padding:.4rem .9rem;font-family:'Nunito',sans-serif;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .2s}
+.copy-upi:hover{background:var(--primary-dark)}
+.utr-card{background:white;border:1px solid var(--border);border-radius:12px;padding:1.4rem}
+.utr-head{font-size:.95rem;font-weight:800;color:var(--text);margin-bottom:1rem;display:flex;align-items:center;gap:.5rem}
+.utr-head i{color:var(--primary)}
+.utr-inp{width:100%;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:10px;font-family:var(--mono);font-size:.95rem;color:var(--text);outline:none;transition:border-color .2s;margin-bottom:.9rem}
+.utr-inp:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(67,97,238,.1)}
+.utr-inp::placeholder{font-family:'Nunito',sans-serif;color:#bcc5d3;font-size:.88rem}
+.submit-btn{width:100%;padding:.9rem;border:none;border-radius:10px;background:var(--primary);color:white;font-family:'Nunito',sans-serif;font-size:.93rem;font-weight:700;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem;box-shadow:0 4px 14px rgba(67,97,238,.25)}
+.submit-btn:hover:not(:disabled){background:var(--primary-dark);transform:translateY(-1px)}
+.submit-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.pending-row{display:none;align-items:center;gap:.7rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:.8rem 1rem;margin-top:.9rem;font-size:.85rem;font-weight:600;color:#92400e}
+.pending-row.on{display:flex}
+.blink{animation:blk 1s infinite}
+@keyframes blk{0%,100%{opacity:1}50%{opacity:.2}}
+.alert-row{padding:.7rem .9rem;border-radius:9px;font-size:.85rem;font-weight:600;display:none;margin-bottom:.9rem}
+.alert-row.on{display:block}
+.alert-row.ok{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0}
+.alert-row.err{background:#fef2f2;color:var(--danger);border:1px solid #fecaca}
+.alert-row.warn{background:#fffbeb;color:#92400e;border:1px solid #fcd34d}
+
+/* history */
+.hist-empty{text-align:center;padding:2.5rem;color:var(--text2)}
+.hist-empty i{font-size:2.5rem;display:block;margin-bottom:.7rem;opacity:.2}
+.hist-table{width:100%;border-collapse:collapse;font-size:.86rem}
+.hist-table th{text-align:left;padding:.7rem 1rem;font-size:.73rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);border-bottom:2px solid var(--border)}
+.hist-table td{padding:.8rem 1rem;border-bottom:1px solid var(--border);color:var(--text)}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-table tr:hover td{background:#f8f9ff}
+
+/* temp mail */
+.mail-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.pass-banner{display:flex;align-items:center;gap:.6rem;padding:.6rem .9rem;border-radius:9px;font-size:.82rem;font-weight:600;margin-bottom:.9rem;cursor:pointer}
+.pass-banner.set{background:#f0fdf4;color:var(--success);border:1px solid #bbf7d0}
+.pass-banner.notset{background:#fffbeb;color:#92400e;border:1px solid #fcd34d}
+.gen-btn{width:100%;padding:.85rem;border:none;border-radius:10px;background:var(--primary);color:white;font-family:'Nunito',sans-serif;font-size:.93rem;font-weight:700;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:.5rem;margin-bottom:1rem;box-shadow:0 4px 14px rgba(67,97,238,.2)}
+.gen-btn:hover:not(:disabled){background:var(--primary-dark)}
+.gen-btn:disabled{opacity:.6;cursor:not-allowed}
+.mail-addr-row{display:flex;align-items:center;gap:.5rem;background:#f8f9ff;border:1px solid var(--border);border-radius:10px;padding:.65rem .9rem;margin-bottom:.7rem}
+.mail-addr-val{flex:1;font-family:var(--mono);font-size:.83rem;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cp-sm{background:var(--primary);color:white;border:none;border-radius:7px;padding:.35rem .75rem;font-size:.76rem;font-weight:700;cursor:pointer;flex-shrink:0}
+.timer-disp{font-family:var(--mono);font-size:2.4rem;font-weight:800;color:var(--primary);text-align:center;margin:.3rem 0}
+.timer-disp.urg{color:var(--danger)}
+.otp-disp{background:#f8f9ff;border:2px dashed var(--border);border-radius:10px;padding:1.2rem;text-align:center;font-family:var(--mono);font-size:1.8rem;font-weight:800;color:#b0bac9;min-height:74px;display:flex;align-items:center;justify-content:center;transition:all .4s}
+.otp-disp.got{background:#f0fdf4;border-color:var(--success);color:var(--success)}
+.inbox-item{background:#f8f9ff;border:1px solid var(--border);border-radius:10px;padding:.8rem .9rem;margin-bottom:.5rem;cursor:default;transition:border-color .2s}
+.inbox-item:hover{border-color:var(--primary)}
+.ib-from{font-size:.72rem;color:var(--text2);margin-bottom:.2rem}
+.ib-subj{font-size:.85rem;font-weight:700;color:var(--text)}
+.ib-prev{font-size:.78rem;color:var(--text2);margin-top:.15rem}
+.otp-chip{display:inline-block;background:var(--primary-light);color:var(--primary);border:1px solid #c7d2fe;border-radius:5px;font-family:var(--mono);font-size:.78rem;font-weight:700;padding:.1rem .5rem;margin-top:.3rem}
+.inbox-empty-sm{text-align:center;padding:2rem;color:var(--text2);font-size:.85rem}
+.inbox-empty-sm i{font-size:2rem;display:block;margin-bottom:.5rem;opacity:.2}
+.mail-hist-item{display:flex;justify-content:space-between;align-items:center;padding:.45rem .7rem;background:#f8f9ff;border-radius:8px;font-size:.78rem;margin-bottom:.3rem;border:1px solid var(--border)}
+.mail-hist-addr{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.mail-hist-time{color:var(--text2);flex-shrink:0;margin-left:.5rem}
+.inbox-scroll{max-height:400px;overflow-y:auto}
+
+/* password modal */
+.modal-ov{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(8px);z-index:9000;display:none;align-items:center;justify-content:center;padding:1.5rem}
+.modal-ov.on{display:flex;animation:fadeIn .25s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.mbox{background:white;border-radius:18px;padding:2rem;max-width:400px;width:100%;box-shadow:0 25px 60px rgba(0,0,0,.18)}
+.mbox-title{font-size:1rem;font-weight:800;margin-bottom:.3rem;display:flex;align-items:center;gap:.5rem;color:var(--text)}
+.mbox-title i{color:var(--primary)}
+.mbox-sub{font-size:.8rem;color:var(--text2);margin-bottom:1.2rem;line-height:1.6}
+.pw-inp-w{position:relative;margin-bottom:.7rem}
+.pw-inp{width:100%;padding:.8rem 2.6rem .8rem .9rem;border:1.5px solid var(--border);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.92rem;color:var(--text);outline:none;transition:border-color .2s}
+.pw-inp:focus{border-color:var(--primary)}
+.eye-btn{position:absolute;right:.8rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text2);cursor:pointer;font-size:.85rem}
+.str-bar-w{height:3px;background:#e8edf5;border-radius:3px;margin-bottom:.3rem}
+.str-bar{height:100%;border-radius:3px;transition:all .3s;width:0}
+.str-hint{font-size:.72rem;color:var(--text2);margin-bottom:.9rem}
+.m-btns{display:flex;gap:.6rem}
+.m-save{flex:1;padding:.8rem;border:none;border-radius:9px;background:var(--primary);color:white;font-family:'Nunito',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer}
+.m-skip{padding:.8rem 1rem;border:1.5px solid var(--border);border-radius:9px;background:transparent;color:var(--text2);font-family:'Nunito',sans-serif;font-size:.85rem;cursor:pointer}
+
+/* processing overlay */
+#pOv{position:fixed;inset:0;background:rgba(15,23,42,.92);backdrop-filter:blur(20px);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem}
+#pOv.on{display:flex;animation:fadeIn .3s}
+.p-ring{width:110px;height:110px;position:relative}
+.p-ring svg{transform:rotate(-90deg)}
+.p-bg{fill:none;stroke:#334155;stroke-width:7}
+.p-bar{fill:none;stroke:url(#pg2);stroke-width:7;stroke-linecap:round;stroke-dasharray:314;stroke-dashoffset:314;transition:stroke-dashoffset .25s}
+.p-pct{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:1.6rem;font-weight:700;color:white}
+.p-msg{color:#94a3b8;font-size:.85rem;text-align:center}
+
+/* coming soon */
+.coming-soon{text-align:center;padding:4rem 2rem}
+.cs-icon{font-size:4rem;color:var(--primary);opacity:.25;margin-bottom:1.2rem}
+.cs-title{font-size:1.6rem;font-weight:800;margin-bottom:.5rem;color:var(--text)}
+.cs-sub{color:var(--text2)}
+
+/* toast */
+#toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.7rem 1.2rem;border-radius:10px;font-size:.87rem;font-weight:700;z-index:99999;transform:translateY(12px);opacity:0;transition:all .3s;pointer-events:none;font-family:'Nunito',sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.15)}
+#toast.on{transform:translateY(0);opacity:1}
+
+/* responsive */
+@media(max-width:900px){
+  :root{--sidebar-w:0px}
+  .sidebar{transform:translateX(-100%);width:240px}
+  .sidebar.mob-open{transform:translateX(0);box-shadow:4px 0 30px rgba(0,0,0,.15)}
+  .main{margin-left:0}
+  .ham-btn{display:flex}
+  .rech-grid{grid-template-columns:1fr}
+  .mail-grid{grid-template-columns:1fr}
+  .country-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+}
+@media(max-width:540px){
+  .content{padding:1rem}
+  .topbar{padding:0 1rem}
+  .buy-bar{flex-direction:column;align-items:stretch}
+  .buy-now-btn{justify-content:center}
+}
+.spin{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ─── TABS (temp mail) ─── */
+.tabs-row{display:flex;align-items:center;gap:.4rem;margin-bottom:1.4rem;background:white;border:1px solid var(--border);border-radius:12px;padding:.3rem;width:fit-content}
+.tab-btn{padding:.45rem 1.1rem;border-radius:9px;border:none;font-family:'Nunito',sans-serif;font-size:.83rem;font-weight:700;cursor:pointer;transition:all .2s;color:var(--text2);background:transparent}
+.tab-btn.act{background:var(--primary);color:white;box-shadow:0 2px 8px rgba(67,97,238,.3)}
+/* ─────────────────────────────────────── */
+</style>
+</head>
+<body>
+
+<!-- Password Modal -->
+<div class="modal-ov" id="passModal">
+  <div class="mbox">
+    <div class="mbox-title"><i class="fas fa-key"></i> Set Email Password</div>
+    <div class="mbox-sub">Temp email ke liye ek password set karo. Browser mein save hoga.<br><span style="font-size:.72rem;color:var(--warn)"><i class="fas fa-info-circle"></i> Default: India@123 (agar skip kiya)</span></div>
+    <div class="pw-inp-w">
+      <input class="pw-inp" type="password" id="pwInp" placeholder="Min 8 characters" oninput="checkStr(this.value)">
+      <button class="eye-btn" onclick="toggleEye()"><i class="fas fa-eye" id="eyeIco"></i></button>
+    </div>
+    <div class="str-bar-w"><div class="str-bar" id="sBar"></div></div>
+    <div class="str-hint" id="sHint">Strength: —</div>
+    <div class="pw-inp-w"><input class="pw-inp" type="password" id="pwConf" placeholder="Confirm password"></div>
+    <div class="m-btns">
+      <button class="m-save" onclick="savePass()"><i class="fas fa-save"></i> Save</button>
+      <button class="m-skip" onclick="closeModal()">Skip</button>
+    </div>
+  </div>
+</div>
+
+<!-- Processing Overlay -->
+<div id="pOv">
+  <div class="p-ring">
+    <svg width="110" height="110">
+      <defs><linearGradient id="pg2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#4361ee"/><stop offset="100%" stop-color="#7c3aed"/></linearGradient></defs>
+      <circle class="p-bg" cx="55" cy="55" r="50"/>
+      <circle class="p-bar" cx="55" cy="55" r="50" id="pBar"/>
+    </svg>
+    <div class="p-pct" id="pPct">0%</div>
+  </div>
+  <div class="p-msg" id="pMsg">Creating secure email...</div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ══════ AUTH ══════ -->
+<div class="auth-wrap" id="loginWrap">
+  <div class="auth-bg-blob"></div><div class="auth-bg-blob"></div>
+  <div class="auth-card" id="loginCard">
+    <div class="auth-logo-row">
+      <div class="auth-logo-icon"><i class="fas fa-signal"></i></div>
+      <div class="auth-logo-name">Offline<span>Sim</span></div>
+    </div>
+    <h2 class="auth-h">Welcome back</h2>
+    <p class="auth-sub">Login karke virtual numbers buy karo</p>
+    <div class="auth-alert" id="loginAlert"></div>
+    <form onsubmit="doLogin(event)">
+      <div class="field"><label>Email / Telegram</label><div class="inp-w"><i class="fas fa-user inp-ico"></i><input class="finp" type="text" id="lUser" placeholder="Email ya Telegram ID" required></div></div>
+      <div class="field"><label>Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="lPass" placeholder="Password" required></div></div>
+      <button class="auth-btn" type="submit"><i class="fas fa-sign-in-alt"></i> Login</button>
+    </form>
+    <div class="auth-footer">Account nahi hai? <a onclick="showReg()">Register karo</a></div>
+  </div>
+  <div class="auth-card" id="regCard" style="display:none">
+    <div class="auth-logo-row">
+      <div class="auth-logo-icon"><i class="fas fa-signal"></i></div>
+      <div class="auth-logo-name">Offline<span>Sim</span></div>
+    </div>
+    <h2 class="auth-h">Create Account</h2>
+    <p class="auth-sub">Register karke services use karo</p>
+    <div class="auth-alert" id="regAlert"></div>
+    <form onsubmit="doReg(event)">
+      <div class="field"><label>Email</label><div class="inp-w"><i class="fas fa-envelope inp-ico"></i><input class="finp" type="email" id="rEmail" placeholder="your@email.com" required></div></div>
+      <div class="field"><label>Telegram ID</label><div class="inp-w"><i class="fab fa-telegram inp-ico"></i><input class="finp" type="text" id="rTg" placeholder="@username" required></div></div>
+      <div class="field"><label>WhatsApp</label><div class="inp-w"><i class="fab fa-whatsapp inp-ico"></i><input class="finp" type="tel" id="rWa" placeholder="+91XXXXXXXXXX" required></div></div>
+      <div class="field"><label>Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="rPass" placeholder="Min 8 characters" required></div></div>
+      <div class="field"><label>Confirm Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="rConf" placeholder="Repeat password" required></div></div>
+      <button class="auth-btn" type="submit"><i class="fas fa-user-plus"></i> Create Account</button>
+    </form>
+    <div class="auth-footer">Account hai? <a onclick="showLogin()">Login karo</a></div>
+  </div>
+</div>
+
+<!-- ══════ APP ══════ -->
+<div class="app" id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <div class="sb-logo-icon"><i class="fas fa-signal"></i></div>
+      <div class="sb-logo-name">Offline<span>Sim</span></div>
+    </div>
+    <div class="sb-user">
+      <div class="sb-user-name" id="sbName">User</div>
+      <div class="sb-user-email" id="sbEmail">—</div>
+      <div class="sb-bal">
+        <span class="sb-bal-label"><i class="fas fa-wallet"></i> Balance</span>
+        <span class="sb-bal-val">₹<span id="sbBal">0</span></span>
+      </div>
+    </div>
+    <nav class="sb-nav">
+      <div class="sb-section">Main Menu</div>
+      <div class="sb-item act" onclick="goPage('dashboard',this)"><i class="fas fa-home"></i><span>Dashboard</span></div>
+      <div class="sb-item" onclick="goPage('buyNumber',this)"><i class="fas fa-mobile-alt"></i><span>Buy Number</span><div class="sb-dot"></div></div>
+      <div class="sb-item" onclick="goPage('recharge',this)"><i class="fas fa-wallet"></i><span>Recharge</span></div>
+      <div class="sb-item" onclick="goPage('numHistory',this)"><i class="fas fa-list-alt"></i><span>Number History</span></div>
+      <div class="sb-item" onclick="goPage('accHistory',this)"><i class="fas fa-clock-rotate-left"></i><span>Account History</span></div>
+      <div class="sb-section">Tools</div>
+      <div class="sb-item" onclick="goPage('tempMail',this)"><i class="fas fa-envelope"></i><span>Temp Mail</span></div>
+      <div class="sb-item" onclick="goPage('apiGateway',this)"><i class="fas fa-code"></i><span>API Gateway</span></div>
+      <div class="sb-section">Account</div>
+      <div class="sb-item" onclick="goPage('help',this)"><i class="fas fa-question-circle"></i><span>Help</span></div>
+      <div class="sb-item" onclick="goPage('installApp',this)"><i class="fas fa-download"></i><span>Install App</span></div>
+    </nav>
+    <div class="sb-bottom">
+      <div class="sb-logout" onclick="doLogout()"><i class="fas fa-sign-out-alt"></i><span>Logout</span></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main" id="mainArea">
+    <div class="topbar">
+      <div class="tb-left">
+        <button class="ham-btn" onclick="toggleSb()"><i class="fas fa-bars"></i></button>
+        <div>
+          <div class="tb-title" id="tbTitle">Dashboard</div>
+          <div class="tb-sub" id="tbSub">OfflineSim</div>
+        </div>
+      </div>
+      <div class="tb-right">
+        <div class="tb-bal-pill"><i class="fas fa-coins"></i> ₹<span id="tbBal">0</span></div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ── DASHBOARD ── -->
+      <div class="page on" id="pg-dashboard">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem;margin-bottom:1.5rem">
+          <div class="card" style="padding:1.2rem;display:flex;align-items:center;gap:1rem">
+            <div style="width:46px;height:46px;background:#eef0fd;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--primary)"><i class="fas fa-wallet"></i></div>
+            <div><div style="font-size:.76rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Balance</div><div style="font-size:1.4rem;font-weight:800;color:var(--text);font-family:var(--mono)">₹<span id="dashBal">0</span></div></div>
+          </div>
+          <div class="card" style="padding:1.2rem;display:flex;align-items:center;gap:1rem">
+            <div style="width:46px;height:46px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--success)"><i class="fas fa-mobile-alt"></i></div>
+            <div><div style="font-size:.76rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Numbers Bought</div><div style="font-size:1.4rem;font-weight:800;color:var(--text)" id="dashNums">0</div></div>
+          </div>
+          <div class="card" style="padding:1.2rem;display:flex;align-items:center;gap:1rem">
+            <div style="width:46px;height:46px;background:#fffbeb;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;color:var(--warn)"><i class="fas fa-envelope"></i></div>
+            <div><div style="font-size:.76rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.05em">Emails Used</div><div style="font-size:1.4rem;font-weight:800;color:var(--text)" id="dashMails">0</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title"><i class="fas fa-bolt"></i> Quick Actions</div></div>
+          <div class="card-body" style="display:flex;gap:.8rem;flex-wrap:wrap">
+            <button onclick="openBuyPage()" style="padding:.7rem 1.3rem;background:var(--primary);color:white;border:none;border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.5rem"><i class="fas fa-mobile-alt"></i> Buy Number</button>
+            <button onclick="goPage('recharge',null)" style="padding:.7rem 1.3rem;background:white;color:var(--primary);border:1.5px solid var(--primary);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.5rem"><i class="fas fa-wallet"></i> Recharge</button>
+            <button onclick="goPage('tempMail',null)" style="padding:.7rem 1.3rem;background:white;color:var(--text);border:1.5px solid var(--border);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.5rem"><i class="fas fa-envelope"></i> Temp Mail</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── BUY NUMBER ── -->
+      <div class="page" id="pg-buyNumber">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem">
+          <div>
+            <div style="font-size:1.3rem;font-weight:800;color:var(--text)">Get Number</div>
+            <div style="font-size:.82rem;color:var(--text2)">Virtual numbers for SMS verification</div>
+          </div>
+        </div>
+        <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem;text-align:center;max-width:480px">
+          <div style="font-size:3rem;margin-bottom:1rem"><i class="fas fa-mobile-alt" style="color:var(--primary);opacity:.8"></i></div>
+          <div style="font-size:1.1rem;font-weight:800;margin-bottom:.4rem;color:var(--text)">Buy Virtual Number</div>
+          <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem;line-height:1.6">Country → Operator → Service select karo aur number lo</div>
+          <button onclick="openBuyPage()" style="padding:.85rem 2rem;background:var(--primary);color:white;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;box-shadow:0 4px 14px rgba(67,97,238,.3);transition:all .2s" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
+            <i class="fas fa-shopping-cart"></i> Buy Number
+          </button>
+        </div>
+      </div>
+
+      <!-- ── RECHARGE ── -->
+      <div class="page" id="pg-recharge">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.4rem;color:var(--text)"><i class="fas fa-wallet" style="color:var(--primary)"></i> Recharge Balance</div>
+        <div class="rech-grid">
+          <div class="step-card"><div class="step-num">1</div><div class="step-txt">QR code scan karo ya UPI ID se payment karo</div></div>
+          <div class="step-card"><div class="step-num">2</div><div class="step-txt">Payment ke baad UTR/Reference number note karo</div></div>
+          <div class="step-card"><div class="step-num">3</div><div class="step-txt">Neeche UTR enter karo — auto verify hoga instantly</div></div>
+        </div>
+        <div class="qr-sec">
+          <div class="qr-box">
+            <img class="qr-img" id="qrImg" src="" alt="QR">
+            <div class="qr-ph" id="qrPh"><i class="fas fa-qrcode"></i><span>Loading QR...</span></div>
+          </div>
+          <div class="qr-right">
+            <div style="font-size:.85rem;font-weight:700;color:var(--text2);margin-bottom:.6rem;text-transform:uppercase;letter-spacing:.06em">UPI ID</div>
+            <div class="upi-row" id="upiRow">
+              <span class="upi-val" id="upiVal">—</span>
+              <button class="copy-upi" onclick="copyUPI()"><i class="fas fa-copy"></i> Copy</button>
+            </div>
+            <div style="font-size:.8rem;color:var(--text2);line-height:1.7">
+              <p><i class="fas fa-shield-alt" style="color:var(--primary)"></i> Secure instant payment verification</p>
+              <p style="margin-top:.3rem"><i class="fas fa-bolt" style="color:var(--warn)"></i> Auto-approved using BharatPe API</p>
+              <p style="margin-top:.3rem"><i class="fas fa-clock" style="color:var(--success)"></i> Manual approval if auto fails</p>
+            </div>
+          </div>
+        </div>
+        <div class="utr-card">
+          <div class="utr-head"><i class="fas fa-receipt"></i> Enter UTR / Reference Number</div>
+          <div class="alert-row" id="rechAlert"></div>
+          <input type="text" class="utr-inp" id="utrInp" placeholder="Enter UTR (1-12 characters)" maxlength="12">
+          <button class="submit-btn" id="submitBtn" onclick="submitUTR()"><i class="fas fa-check-circle"></i> Verify & Add Balance</button>
+          <div class="pending-row" id="pendRow"><i class="fas fa-circle blink" style="color:var(--warn);font-size:.5rem"></i><span>Order pending — admin approval ka wait hai. Auto-checking har 10 sec...</span></div>
+        </div>
+      </div>
+
+      <!-- ── NUMBER HISTORY ── -->
+      <div class="page" id="pg-numHistory">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.2rem;color:var(--text)"><i class="fas fa-list-alt" style="color:var(--primary)"></i> Number History</div>
+        <div class="card"><div class="card-body" id="numHistBody">
+          <div class="hist-empty"><i class="fas fa-inbox"></i>No history yet</div>
+        </div></div>
+      </div>
+
+      <!-- ── ACCOUNT HISTORY ── -->
+      <div class="page" id="pg-accHistory">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.2rem;color:var(--text)"><i class="fas fa-clock-rotate-left" style="color:var(--primary)"></i> Account History</div>
+        <div class="card"><div class="card-body" id="accHistBody">
+          <div class="hist-empty"><i class="fas fa-inbox"></i>No transactions yet</div>
+        </div></div>
+      </div>
+
+      <!-- ── TEMP MAIL ── -->
+      <div class="page" id="pg-tempMail">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.2rem;color:var(--text)"><i class="fas fa-envelope" style="color:var(--primary)"></i> Temporary Email</div>
+        <!-- Mail mode tabs -->
+        <div class="tabs-row" style="margin-bottom:1rem">
+          <button class="tab-btn act" id="mailTabGen" onclick="switchMailTab('gen')"><i class="fas fa-magic"></i> Generate</button>
+          <button class="tab-btn" id="mailTabLogin" onclick="switchMailTab('login')"><i class="fas fa-sign-in-alt"></i> Login Mail</button>
+        </div>
+        <!-- Login Mail panel -->
+        <div id="mailLoginPanel" style="display:none;margin-bottom:1rem">
+          <div class="card">
+            <div class="card-head"><div class="card-title"><i class="fas fa-sign-in-alt"></i> Login with Existing Mail</div></div>
+            <div class="card-body">
+              <div class="alert-row" id="mailLoginAlert"></div>
+              <div class="field" style="margin-bottom:.8rem"><label>Mail.tm Email</label><div class="inp-w"><i class="fas fa-envelope inp-ico"></i><input class="finp" type="email" id="mlEmail" placeholder="your@mail.tm"></div></div>
+              <div class="field" style="margin-bottom:.8rem"><label>Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="mlPass" placeholder="Your password"></div></div>
+              <button onclick="loginMail()" style="padding:.75rem 1.5rem;background:var(--primary);color:white;border:none;border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-sign-in-alt"></i> Login & Read Inbox</button>
+            </div>
+          </div>
+        </div>
+        <div class="mail-grid">
+          <div>
+            <div class="card" style="margin-bottom:1rem">
+              <div class="card-head"><div class="card-title"><i class="fas fa-magic"></i> Generate Email</div></div>
+              <div class="card-body">
+                <div class="pass-banner set" id="passBanner" onclick="openModal()">
+                  <i class="fas fa-lock"></i><span id="passStatus">Password set — click to change</span>
+                </div>
+                <button class="gen-btn" id="genBtn" onclick="genEmail()"><i class="fas fa-plus-circle"></i> Generate New Email</button>
+                <div id="mailBox" style="display:none">
+                  <div class="mail-addr-row"><span class="mail-addr-val" id="mailAddr">—</span><button class="cp-sm" onclick="cpMail()">Copy</button></div>
+                  <div class="timer-disp" id="mailTimer">05:00</div>
+                  <div style="font-size:.73rem;color:var(--text2);text-align:center;margin-bottom:.8rem">Session time remaining</div>
+                  <div class="otp-disp" id="mailOtp">Waiting for OTP...</div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head"><div class="card-title"><i class="fas fa-history"></i> Recent Emails</div></div>
+              <div class="card-body" id="mailHistBox"><div style="font-size:.82rem;color:var(--text2)">No recent emails</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title"><i class="fas fa-inbox"></i> Inbox</div>
+              <span id="inboxCnt" style="font-size:.78rem;color:var(--text2);font-weight:600">(0)</span>
+            </div>
+            <div class="card-body inbox-scroll" id="inboxPanel">
+              <div class="inbox-empty-sm"><i class="fas fa-envelope-open"></i>Inbox empty<br>Generate email first</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── API GATEWAY ── -->
+      <div class="page" id="pg-apiGateway">
+        <div class="coming-soon"><div class="cs-icon"><i class="fas fa-code"></i></div><div class="cs-title">API Gateway</div><div class="cs-sub">Coming soon — API documentation in progress</div></div>
+      </div>
+
+      <!-- ── HELP ── -->
+      <div class="page" id="pg-help">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.4rem;color:var(--text)"><i class="fas fa-question-circle" style="color:var(--primary)"></i> Help & Support</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem">
+          <a id="helpWaLink" href="#" target="_blank" style="text-decoration:none">
+            <div class="card" style="padding:1.4rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:box-shadow .2s" onmouseover="this.style.boxShadow='0 4px 20px rgba(37,211,102,.15)'" onmouseout="this.style.boxShadow=''">
+              <div style="width:48px;height:48px;background:#dcfce7;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#22c55e;flex-shrink:0"><i class="fab fa-whatsapp"></i></div>
+              <div><div style="font-weight:800;font-size:.92rem;color:var(--text)">WhatsApp Support</div><div style="font-size:.78rem;color:var(--text2);margin-top:.2rem">Chat with us on WhatsApp</div></div>
+            </div>
+          </a>
+          <a id="helpTgLink" href="#" target="_blank" style="text-decoration:none">
+            <div class="card" style="padding:1.4rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:box-shadow .2s" onmouseover="this.style.boxShadow='0 4px 20px rgba(37,99,235,.15)'" onmouseout="this.style.boxShadow=''">
+              <div style="width:48px;height:48px;background:#eff6ff;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--primary);flex-shrink:0"><i class="fab fa-telegram"></i></div>
+              <div><div style="font-weight:800;font-size:.92rem;color:var(--text)">Telegram Support</div><div style="font-size:.78rem;color:var(--text2);margin-top:.2rem">Join our Telegram group</div></div>
+            </div>
+          </a>
+          <div class="card" style="padding:1.4rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:box-shadow .2s" onclick="toast('Online support chat coming soon!')" onmouseover="this.style.boxShadow='0 4px 20px rgba(245,158,11,.15)'" onmouseout="this.style.boxShadow=''">
+            <div style="width:48px;height:48px;background:#fffbeb;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--warn);flex-shrink:0"><i class="fas fa-headset"></i></div>
+            <div><div style="font-weight:800;font-size:.92rem;color:var(--text)">Online Support</div><div style="font-size:.78rem;color:var(--text2);margin-top:.2rem">Live chat support</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── INSTALL APP ── -->
+      <div class="page" id="pg-installApp">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.4rem;color:var(--text)"><i class="fas fa-download" style="color:var(--primary)"></i> Install App</div>
+        <div class="card" style="max-width:400px;padding:2rem;text-align:center">
+          <div style="font-size:4rem;margin-bottom:1rem"><i class="fab fa-android" style="color:#22c55e"></i></div>
+          <div style="font-size:1.1rem;font-weight:800;margin-bottom:.5rem">OfflineSim Android App</div>
+          <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem">Admin panel se latest APK download karo</div>
+          <button onclick="downloadAPK()" style="padding:.9rem 2rem;background:var(--primary);color:white;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'"><i class="fas fa-download"></i> Download APK</button>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+
+    <!-- buy bar removed (moved to buynumber.html) -->
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+// ════════════════════════════════════════
+//  CONFIG
+// ════════════════════════════════════════
+const SKEY   = 'a362879eb1515c86208a58f8557c9a7a3ab0';
+const SBASE  = 'https://api.smsindia.pro/stubs/handler_api.php';
+const PROXY  = 'https://corsproxy.io/?url=';
+const OP     = '1';
+
+// Buy Number — opens in dedicated page
+function openBuyPage() {
+  window.location.href = '/buynumber';
+}
+const PASS_KEY   = 'offlinesim_mail_pass';
+const DEF_PASS   = 'India@123';
+const MAIL_SECS  = 300;
+
+let currentUser = null;
+let mailCount = 0;
+let purchaseHist = JSON.parse(localStorage.getItem('vn_num_hist') || '[]');
+let numCount = purchaseHist.length;
+let txHist       = [];
+let mToken = null, mAddr = '', mSecs = MAIL_SECS, mTimer = null, inboxIv = null;
+let pendUTR = null, pendIv = null;
+let cfgData = {};
+
+// ════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const u = localStorage.getItem('vnUser');
+  if (u) { currentUser = JSON.parse(u); showApp(); }
+  else    { document.getElementById('loginWrap').classList.add('on'); }
+  loadConfig();
+  updatePassBanner();
+});
+
+// ════════════════════════════════════════
+//  CONFIG  (/api/config → admin panel)
+// ════════════════════════════════════════
+async function loadConfig() {
+  try {
+    const r = await fetch('/api/config');
+    if (!r.ok) return;
+    cfgData = await r.json();
+    if (cfgData.qr_code) {
+      document.getElementById('qrImg').src = cfgData.qr_code;
+      document.getElementById('qrImg').style.display = 'block';
+      document.getElementById('qrPh').style.display  = 'none';
+    }
+    if (cfgData.upi_id) {
+      document.getElementById('upiVal').textContent = cfgData.upi_id;
+      document.getElementById('upiRow').classList.add('show');
+    }
+    if (cfgData.whatsapp_link) document.getElementById('helpWaLink').href = cfgData.whatsapp_link;
+    if (cfgData.telegram_link) document.getElementById('helpTgLink').href = cfgData.telegram_link;
+  } catch(e) {}
+}
+
+async function downloadAPK() {
+  window.location.href = '/api/download-apk';
+}
+
+// ════════════════════════════════════════
+//  AUTH
+// ════════════════════════════════════════
+function showReg() {
+  document.getElementById('loginCard').style.display='none';
+  document.getElementById('regCard').style.display='block';
+}
+function showLogin() {
+  document.getElementById('regCard').style.display='none';
+  document.getElementById('loginCard').style.display='block';
+}
+async function doLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById('lUser').value.trim();
+  const pass  = document.getElementById('lPass').value.trim();
+  const al    = document.getElementById('loginAlert');
+  const btn   = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch spin"></i> Logging in...';
+  try {
+    const r = await fetch('/api/login', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})});
+    const d = await r.json();
+    if (!d.success) { showAl(al, '❌ ' + d.error, 'err'); return; }
+    currentUser = d.user;
+    localStorage.setItem('vnUser', JSON.stringify(currentUser));
+    document.getElementById('loginWrap').classList.remove('on');
+    showApp();
+  } catch(ex) {
+    showAl(al, '❌ Server se connect nahi ho pa raha.', 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
+  }
+}
+async function doReg(e) {
+  e.preventDefault();
+  const p1 = document.getElementById('rPass').value;
+  const p2 = document.getElementById('rConf').value;
+  const al = document.getElementById('regAlert');
+  if (p1 !== p2) { showAl(al,'❌ Passwords match nahi','err'); return; }
+  const btn = e.target.querySelector('button[type=submit]');
+  btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch spin"></i> Registering...';
+  try {
+    const r = await fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        email:    document.getElementById('rEmail').value.trim(),
+        telegram: document.getElementById('rTg').value.trim(),
+        whatsapp: document.getElementById('rWa').value.trim(),
+        password: p1
+      })});
+    const d = await r.json();
+    if (!d.success) { showAl(al, '❌ ' + d.error, 'err'); return; }
+    showAl(al,'✅ Registration ho gaya! Ab login karo.','ok');
+    setTimeout(showLogin, 1800);
+  } catch(ex) {
+    showAl(al, '❌ Server se connect nahi ho pa raha.', 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+  }
+}
+function showApp() {
+  document.getElementById('app').classList.add('on');
+  if (currentUser) {
+    document.getElementById('sbName').textContent = currentUser.username || 'User';
+    document.getElementById('sbEmail').textContent = currentUser.email || '—';
+    updBal();
+  }
+  // Load num count from localStorage (set by buynumber.html)
+  const hist = JSON.parse(localStorage.getItem('vn_num_hist') || '[]');
+  const dashNums = document.getElementById('dashNums');
+  if (dashNums) dashNums.textContent = hist.length;
+}
+function doLogout() {
+  if (!confirm('Logout karna chahte ho?')) return;
+  localStorage.removeItem('vnUser');
+  clearInterval(pendIv); clearInterval(otpIv); clearInterval(inboxIv); clearInterval(mTimer);
+  location.reload();
+}
+function updBal() {
+  const b = currentUser ? (currentUser.balance||0) : 0;
+  ['sbBal','tbBal','dashBal'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = b;
+  });
+}
+
+// ════════════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════════════
+const pgTitles = {
+  dashboard: ['Dashboard','OfflineSim'],
+  buyNumber:  ['Buy Number','Virtual numbers for SMS verification'],
+  recharge:   ['Recharge','Add balance to your account'],
+  numHistory: ['Number History','All purchased numbers'],
+  accHistory: ['Account History','Transactions & balance'],
+  tempMail:   ['Temp Mail','Disposable email'],
+  apiGateway: ['API Gateway','Developer access'],
+  help:       ['Help & Support','Documentation'],
+  installApp: ['Install App','Download mobile app']
+};
+function goPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.sb-item').forEach(i => i.classList.remove('act'));
+  const pg = document.getElementById('pg-'+name);
+  if (pg) pg.classList.add('on');
+  if (el) el.classList.add('act');
+  else {
+    document.querySelectorAll('.sb-item').forEach(i => {
+      if (i.getAttribute('onclick') && i.getAttribute('onclick').includes("'"+name+"'")) i.classList.add('act');
+    });
+  }
+  const t = pgTitles[name] || [name,''];
+  document.getElementById('tbTitle').textContent = t[0];
+  document.getElementById('tbSub').textContent   = t[1];
+  if (name==='numHistory')  renderNumHist();
+  if (name==='accHistory')  renderAccHist();
+  if (window.innerWidth<=900) document.getElementById('sidebar').classList.remove('mob-open');
+}
+function toggleSb() {
+  document.getElementById('sidebar').classList.toggle('mob-open');
+}
+
+// ════════════════════════════════════════
+//  RECHARGE  — exact /api/submit-order flow
+// ════════════════════════════════════════
+function copyUPI() {
+  const v = cfgData.upi_id || document.getElementById('upiVal').textContent;
+  clip(v, 'UPI ID copied!');
+}
+async function submitUTR() {
+  const utr = document.getElementById('utrInp').value.trim();
+  clearInterval(pendIv);
+  document.getElementById('pendRow').classList.remove('on');
+  if (!utr) { showAlId('rechAlert','❌ UTR enter karo','err'); return; }
+  if (utr.length > 12) { showAlId('rechAlert','❌ UTR max 12 characters','err'); return; }
+  if (!/^[a-zA-Z0-9]+$/.test(utr)) { showAlId('rechAlert','❌ UTR sirf letters/numbers','err'); return; }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Verifying...';
+  try {
+    const res  = await fetch('/api/recharge',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({utr, user_id: currentUser.id})});
+    const data = await res.json();
+    if (data.success && data.approved) {
+      currentUser.balance = data.new_balance;
+      localStorage.setItem('vnUser',JSON.stringify(currentUser));
+      updBal();
+      txHist.push({utr, amount:data.amount, status:'Approved', time:new Date().toLocaleString()});
+      showAlId('rechAlert',`✅ ₹${data.amount} balance add ho gaya!`,'ok');
+    } else if (data.success && data.pending) {
+      pendUTR = utr;
+      document.getElementById('pendRow').classList.add('on');
+      txHist.push({utr, amount:'—', status: data.vip?'VIP Pending':'Pending', time:new Date().toLocaleString()});
+      showAlId('rechAlert','⏳ Order submitted — admin approval pending','warn');
+      startPendPoll(utr);
+    } else {
+      showAlId('rechAlert','❌ '+(data.error||'Verification failed'),'err');
+    }
+  } catch(e) {
+    showAlId('rechAlert','❌ Server error. Try again.','err');
+  } finally {
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-check-circle"></i> Verify & Add Balance';
+  }
+}
+function startPendPoll(utr) {
+  clearInterval(pendIv);
+  pendIv = setInterval(async()=>{
+    try {
+      const res  = await fetch('/api/check-recharge-status',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({utr, user_id: currentUser.id})});
+      const data = await res.json();
+      if (data.approved) {
+        clearInterval(pendIv);
+        document.getElementById('pendRow').classList.remove('on');
+        currentUser.balance = data.new_balance;
+        localStorage.setItem('vnUser',JSON.stringify(currentUser));
+        updBal();
+        const h = txHist.find(t=>t.utr===utr); if(h){h.status='Approved';h.amount=data.amount;}
+        showAlId('rechAlert',`✅ Approved! ₹${data.amount} balance add ho gaya.`,'ok');
+      } else if (data.rejected) {
+        clearInterval(pendIv);
+        document.getElementById('pendRow').classList.remove('on');
+        const h = txHist.find(t=>t.utr===utr); if(h) h.status='Rejected';
+        showAlId('rechAlert','❌ Order reject ho gaya. Support se contact karo.','err');
+      }
+    } catch(_){}
+  }, 10000);
+}
+
+// ════════════════════════════════════════
+//  HISTORY
+// ════════════════════════════════════════
+function renderNumHist() {
+  const hist = JSON.parse(localStorage.getItem('vn_num_hist') || '[]');
+  const el = document.getElementById('numHistBody');
+  if (!hist.length) { el.innerHTML='<div class="hist-empty"><i class="fas fa-inbox"></i>No history yet</div>'; return; }
+  el.innerHTML = `<table class="hist-table"><thead><tr><th>Number</th><th>Country</th><th>Service</th><th>OTP</th><th>Time</th></tr></thead><tbody>`
+    + hist.map(h=>`<tr><td style="font-family:var(--mono);font-weight:700">${h.phone}</td><td>${cflag(h.countryId)||''}${h.country}</td><td>${h.service}</td><td>${h.otp||'—'}</td><td>${h.time}</td></tr>`).join('')
+    + `</tbody></table>`;
+}
+function renderAccHist() {
+  const el = document.getElementById('accHistBody');
+  if (!txHist.length) { el.innerHTML='<div class="hist-empty"><i class="fas fa-inbox"></i>No transactions yet</div>'; return; }
+  el.innerHTML = `<table class="hist-table"><thead><tr><th>UTR</th><th>Amount</th><th>Status</th><th>Time</th></tr></thead><tbody>`
+    + txHist.map(h=>`<tr><td style="font-family:var(--mono)">${h.utr}</td><td style="color:var(--success);font-weight:700">${h.amount!=='—'?'₹'+h.amount:'—'}</td><td>${h.status||'—'}</td><td>${h.time}</td></tr>`).join('')
+    + `</tbody></table>`;
+}
+
+// ════════════════════════════════════════
+//  TEMP MAIL
+// ════════════════════════════════════════
+function switchMailTab(t) {
+  document.getElementById('mailTabGen').classList.toggle('act', t==='gen');
+  document.getElementById('mailTabLogin').classList.toggle('act', t==='login');
+  document.getElementById('mailLoginPanel').style.display = t==='login' ? 'block' : 'none';
+}
+
+async function loginMail() {
+  const email = document.getElementById('mlEmail').value.trim();
+  const pass  = document.getElementById('mlPass').value.trim();
+  const al    = document.getElementById('mailLoginAlert');
+  if (!email||!pass) { showAl(al,'❌ Email aur password enter karo','err'); return; }
+  try {
+    const tr = await fetch('https://api.mail.tm/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:email,password:pass})});
+    if (!tr.ok) { showAl(al,'❌ Login failed — email ya password galat hai','err'); return; }
+    mToken = (await tr.json()).token;
+    mAddr  = email;
+    showAl(al,'✅ Login successful! Inbox load ho raha hai...','ok');
+    // Show inbox (reuse same inbox panel)
+    clearInterval(inboxIv); inboxIv = setInterval(fetchInbox, 4800); fetchInbox();
+  } catch(e) { showAl(al,'❌ Server error','err'); }
+}
+
+const N1=['rahul','aman','vikash','rohan','sachin','arjun','karan','nikhil','yash','aditya','sawan','ravi','deepak','ankit','mohit'];
+const N2=['kumar','singh','sharma','yadav','gupta','verma','mishra','patel','jha','thakur'];
+async function genEmail() {
+  const btn = document.getElementById('genBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Creating...';
+  clearInterval(mTimer); clearInterval(inboxIv); mToken=null;
+  await showProc();
+  try {
+    const dr  = await fetch('https://api.mail.tm/domains');
+    if (!dr.ok) throw new Error('No domains');
+    const dd  = await dr.json();
+    const dom = dd['hydra:member']?.[0]?.domain;
+    if (!dom) throw new Error('No domain');
+    mAddr = rUser()+'@'+dom;
+    const pw = localStorage.getItem(PASS_KEY)||DEF_PASS;
+    const ar = await fetch('https://api.mail.tm/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:mAddr,password:pw})});
+    if (!ar.ok) throw new Error('Account failed');
+    const tr = await fetch('https://api.mail.tm/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:mAddr,password:pw})});
+    if (!tr.ok) throw new Error('Auth failed');
+    mToken = (await tr.json()).token;
+    document.getElementById('mailAddr').textContent = mAddr;
+    document.getElementById('mailBox').style.display = 'block';
+    document.getElementById('mailOtp').textContent = 'Waiting for OTP...';
+    document.getElementById('mailOtp').classList.remove('got');
+    addMailHist(mAddr);
+    mailCount++;
+    document.getElementById('dashMails').textContent = mailCount;
+    startMTimer(); startInbox();
+  } catch(e) { toast('Error: '+(e.message||'Unknown'),'err'); }
+  finally { btn.innerHTML='<i class="fas fa-plus-circle"></i> Generate New Email'; btn.disabled=false; hideProc(); }
+}
+function cpMail() { clip(mAddr, 'Email copied!'); }
+function startMTimer() {
+  mSecs=MAIL_SECS; updTimer();
+  document.getElementById('mailTimer').classList.remove('urg');
+  mTimer=setInterval(()=>{
+    mSecs--; updTimer();
+    if (mSecs<=60) document.getElementById('mailTimer').classList.add('urg');
+    if (mSecs<=0) { clearInterval(mTimer); clearInterval(inboxIv); document.getElementById('mailTimer').textContent='00:00'; }
+  },1000);
+}
+function updTimer() { const m=String(Math.floor(mSecs/60)).padStart(2,'0');const s=String(mSecs%60).padStart(2,'0');document.getElementById('mailTimer').textContent=m+':'+s; }
+function startInbox() { clearInterval(inboxIv); fetchInbox(); inboxIv=setInterval(fetchInbox,4800); }
+async function fetchInbox() {
+  if (!mToken||mSecs<=0) return;
+  try {
+    const r = await fetch('https://api.mail.tm/messages?page=1&limit=10',{headers:{Authorization:'Bearer '+mToken}});
+    if (!r.ok) return;
+    const d = await r.json();
+    const msgs = d['hydra:member']||[];
+    document.getElementById('inboxCnt').textContent='('+msgs.length+')';
+    if (!msgs.length) return;
+    renderInbox(msgs);
+    const first = msgs[0];
+    const txt = (first.intro||'')+' '+(first.subject||'');
+    const otp = txt.match(/\b\d{4,8}\b/)?.[0];
+    if (otp) { document.getElementById('mailOtp').textContent=otp; document.getElementById('mailOtp').classList.add('got'); }
+  } catch(_) {}
+}
+function renderInbox(msgs) {
+  document.getElementById('inboxPanel').innerHTML = msgs.map(m=>{
+    const txt=(m.intro||'')+' '+(m.subject||'');
+    const otp=txt.match(/\b\d{4,8}\b/)?.[0];
+    return `<div class="inbox-item"><div class="ib-from"><i class="fas fa-user-circle"></i> ${m.from?.address||'Unknown'}</div><div class="ib-subj">${m.subject||'(no subject)'}</div><div class="ib-prev">${m.intro||''}</div>${otp?`<div class="otp-chip"><i class="fas fa-key"></i> OTP: ${otp}</div>`:''}</div>`;
+  }).join('');
+}
+function addMailHist(email) {
+  const h = document.getElementById('mailHistBox');
+  if (h.querySelector('div[style]')) h.innerHTML='';
+  const d = document.createElement('div');
+  d.className='mail-hist-item';
+  d.innerHTML=`<span class="mail-hist-addr">${email}</span><span class="mail-hist-time">${new Date().toLocaleTimeString()}</span>`;
+  h.prepend(d);
+}
+function rUser(){ const a=N1[Math.floor(Math.random()*N1.length)];const b=N2[Math.floor(Math.random()*N2.length)];const n=Math.floor(10000+Math.random()*90000);return [a+b+n,a+n,b+n][Math.floor(Math.random()*3)]; }
+
+// ════════════════════════════════════════
+//  PASSWORD MODAL
+// ════════════════════════════════════════
+function openModal(){ document.getElementById('passModal').classList.add('on'); setTimeout(()=>document.getElementById('pwInp').focus(),80); }
+function closeModal(){ document.getElementById('passModal').classList.remove('on'); }
+document.getElementById('passModal').addEventListener('click',function(e){if(e.target===this)closeModal();});
+function updatePassBanner() {
+  const set = !!localStorage.getItem(PASS_KEY);
+  const b   = document.getElementById('passBanner');
+  const s   = document.getElementById('passStatus');
+  if (set) { b.className='pass-banner set'; s.textContent='Password set — click to change'; }
+  else     { b.className='pass-banner notset'; s.textContent='⚠️ No password set (default: India@123). Click to set.'; }
+}
+function savePass(){
+  const p1=document.getElementById('pwInp').value.trim();
+  const p2=document.getElementById('pwConf').value.trim();
+  if(p1.length<8){toast('Min 8 characters chahiye','err');return;}
+  if(p1!==p2){toast('Passwords match nahi','err');return;}
+  localStorage.setItem(PASS_KEY,p1);
+  toast('Password save ho gaya ✓');
+  closeModal(); updatePassBanner();
+}
+function toggleEye(){const i=document.getElementById('pwInp');const ico=document.getElementById('eyeIco');i.type=i.type==='password'?'text':'password';ico.className='fas fa-eye'+(i.type==='text'?'-slash':'');}
+function checkStr(v){let s=0;if(v.length>=8)s++;if(v.length>=12)s++;if(/[A-Z]/.test(v))s++;if(/[0-9]/.test(v))s++;if(/[^A-Za-z0-9]/.test(v))s++;const m=[{w:'20%',c:'#ef4444',t:'Very weak'},{w:'40%',c:'#f59e0b',t:'Weak'},{w:'60%',c:'#f59e0b',t:'Medium'},{w:'80%',c:'#22c55e',t:'Strong'},{w:'100%',c:'#22c55e',t:'Very strong'}];const x=m[Math.min(s,4)];document.getElementById('sBar').style.width=x.w;document.getElementById('sBar').style.background=x.c;document.getElementById('sHint').textContent='Strength: '+x.t;}
+
+// ════════════════════════════════════════
+//  PROCESSING OVERLAY
+// ════════════════════════════════════════
+function showProc(){
+  const ov=document.getElementById('pOv');ov.classList.add('on');
+  document.getElementById('pBar').style.strokeDashoffset=314;
+  document.getElementById('pPct').textContent='0%';
+  document.getElementById('pMsg').textContent='Creating secure email...';
+  return new Promise(res=>{
+    let p=0;const iv=setInterval(()=>{
+      p+=Math.random()*9+3;
+      if(p>=100){p=100;clearInterval(iv);document.getElementById('pPct').textContent='100%';document.getElementById('pBar').style.strokeDashoffset=0;setTimeout(res,350);}
+      else{document.getElementById('pPct').textContent=Math.floor(p)+'%';document.getElementById('pBar').style.strokeDashoffset=314-(314*p/100);}
+    },70);
+  });
+}
+function hideProc(){setTimeout(()=>document.getElementById('pOv').classList.remove('on'),400);}
+
+// ════════════════════════════════════════
+//  HELPERS
+// ════════════════════════════════════════
+function showAlId(id,msg,type){const el=document.getElementById(id);el.textContent=msg;el.className='alert-row '+type+' on';clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),4000);}
+function showAl(el,msg,type){el.textContent=msg;el.className='auth-alert '+type+' show';clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),3000);}
+function clip(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>fbclip(t,msg));}else fbclip(t,msg);}
+function fbclip(t,msg){const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast(msg);}catch(_){toast('Copy failed','err');}document.body.removeChild(ta);}
+let toastT;
+function toast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.style.background=type==='err'?'#ef4444':'#22c55e';el.style.color='white';el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2500);}
+function esc(s){return String(s).replace(/'/g,"\\'")}
+function cflag(id){const m={'1':'🇷🇺','2':'🇺🇦','3':'🇰🇿','4':'🇨🇳','5':'🇵🇭','6':'🇲🇲','7':'🇮🇩','8':'🇲🇾','9':'🇰🇪','10':'🇹🇿','11':'🇻🇳','12':'🇰🇬','13':'🇺🇸','14':'🇮🇱','15':'🇭🇰','16':'🇵🇱','17':'🇬🇧','18':'🇮🇳','19':'🇳🇬','20':'🇧🇷','21':'🇪🇬','22':'🇲🇦','23':'🇿🇦','24':'🇩🇪','25':'🇫🇷'};return m[String(id)]||'🌐';}
+function sicon(c){const m={wa:'📱',tg:'✈️',ig:'📷',fb:'👤',tw:'🐦',go:'🔍',am:'🛒',yt:'▶️',tk:'🎵',nf:'🎬',wc:'💬',li:'💼',vi:'📹',sk:'💻',sp:'🎵',pa:'💳',pp:'💸',ub:'🚗',ok:'👥',vk:'💬',mm:'📞',npd:'💘',ape:'🧭',ipa:'🅰️',rpe:'🚖',ibo:'💬',tya:'🎮',avo:'📮',oql:'🟣',ews:'💬'};return m[c]||'📲';}
+</script>
+</body>
+</html>

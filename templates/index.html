@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OfflineSim - Virtual Numbers, IDs & Cloud Services</title>
+  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #8b5cf6;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #0f172a;
+            --dark-2: #1e293b;
+            --dark-3: #334155;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --border: rgba(148, 163, 184, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--dark);
+            color: var(--light);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            padding: 1rem 0;
+        }
+
+        .header-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .logo {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--light);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .logo i {
+            color: var(--primary);
+            font-size: 2rem;
+        }
+
+        .nav-menu {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            color: var(--gray);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: var(--light);
+        }
+
+        .nav-link.btn {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            color: white;
+        }
+
+        .nav-link.btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        .contact-links {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .contact-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            transition: all 0.3s;
+            font-size: 1.1rem;
+        }
+
+        .whatsapp-icon {
+            background: #25D366;
+            color: white;
+        }
+
+        .whatsapp-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(37, 211, 102, 0.4);
+        }
+
+        .telegram-icon {
+            background: #0088cc;
+            color: white;
+        }
+
+        .telegram-icon:hover {
+            transform: scale(1.1);
+            box-shadow: 0 4px 20px rgba(0, 136, 204, 0.4);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 4rem 1.5rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: fadeInUp 0.8s ease;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--gray);
+            max-width: 700px;
+            margin: 0 auto 3rem;
+            line-height: 1.7;
+            animation: fadeInUp 0.8s ease 0.2s both;
+        }
+
+        /* Services Grid */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 1.5rem 4rem;
+        }
+
+        .service-card {
+            background: var(--dark-2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2.5rem;
+            transition: all 0.4s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            animation: fadeInUp 0.8s ease both;
+        }
+
+        .service-card:nth-child(1) { animation-delay: 0.1s; }
+        .service-card:nth-child(2) { animation-delay: 0.2s; }
+        .service-card:nth-child(3) { animation-delay: 0.3s; }
+
+        .service-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            transform: scaleX(0);
+            transition: transform 0.4s;
+            transform-origin: left;
+        }
+
+        .service-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(37, 99, 235, 0.2);
+        }
+
+        .service-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .service-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: white;
+        }
+
+        .service-card:nth-child(2) .service-icon {
+            background: linear-gradient(135deg, var(--secondary), var(--accent));
+        }
+
+        .service-card:nth-child(3) .service-icon {
+            background: linear-gradient(135deg, var(--accent), var(--success));
+        }
+
+        .service-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--light);
+        }
+
+        .service-description {
+            font-size: 1rem;
+            color: var(--gray);
+            line-height: 1.7;
+            margin-bottom: 2rem;
+        }
+
+        .service-features {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .service-features li {
+            padding: 0.5rem 0;
+            color: var(--gray);
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .service-features li i {
+            color: var(--success);
+            font-size: 0.85rem;
+        }
+
+        .service-btn {
+            width: 100%;
+            padding: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .service-btn:hover {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.3);
+        }
+
+        /* Stats Section */
+        .stats {
+            background: var(--dark-2);
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            padding: 3rem 1.5rem;
+            margin: 4rem 0;
+        }
+
+        .stats-grid {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            text-align: center;
+        }
+
+        .stat-item {
+            animation: fadeInUp 0.8s ease both;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: var(--gray);
+            font-weight: 600;
+        }
+
+        /* Features Section */
+        .features {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+        }
+
+        .features-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 3rem;
+            color: var(--light);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--dark-2);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+        }
+
+        .feature-card i {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: var(--light);
+        }
+
+        .feature-card p {
+            color: var(--gray);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--dark-2);
+            border-top: 1px solid var(--border);
+            padding: 3rem 1.5rem 2rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .footer-logo {
+            font-size: 2rem;
+            font-weight: 800;
+            font-family: 'Space Mono', monospace;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .footer-text {
+            color: var(--gray);
+            margin-bottom: 2rem;
+        }
+
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            color: var(--gray);
+            text-decoration: none;
+            font-size: 0.95rem;
+            transition: color 0.3s;
+        }
+
+        .footer-link:hover {
+            color: var(--light);
+        }
+
+        .footer-bottom {
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Animations */
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Announcement Bar */
+        .announcement {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            padding: 0.75rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: white;
+            animation: slideDown 0.5s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--dark-2);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            animation: scaleIn 0.3s ease;
+            margin: auto;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes scaleIn {
+            from {
+                transform: scale(0.9);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: var(--dark-3);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            color: var(--gray);
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .modal-close:hover {
+            background: var(--dark);
+            color: var(--light);
+            transform: rotate(90deg);
+        }
+
+        .modal-title {
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            color: var(--light);
+        }
+
+        .modal-description {
+            color: var(--gray);
+            margin-bottom: 2rem;
+            line-height: 1.7;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--light);
+            font-size: 0.95rem;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 1rem;
+            background: var(--dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--light);
+            font-size: 1rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: all 0.3s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-select {
+            width: 100%;
+            padding: 1rem;
+            background: var(--dark);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--light);
+            font-size: 1rem;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .form-select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .price-display {
+            background: var(--dark);
+            border: 2px solid var(--primary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+
+        .price-label {
+            font-size: 0.9rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+
+        .price-amount {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--primary);
+            font-family: 'Space Mono', monospace;
+        }
+
+        .modal-btn {
+            width: 100%;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .modal-btn:hover:not(:disabled) {
+            transform: scale(1.02);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.4);
+        }
+
+        .modal-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Payment Modal Specific */
+        .payment-info {
+            background: var(--dark);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .payment-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .payment-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .payment-row span:first-child {
+            color: var(--gray);
+        }
+
+        .payment-row span:last-child {
+            color: var(--light);
+        }
+
+        .qr-section {
+            background: var(--dark);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .qr-section img {
+            max-width: 100%;
+            width: 280px;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .upi-box {
+            background: var(--dark-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .upi-id {
+            flex: 1;
+            color: var(--light);
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-dark);
+            transform: scale(1.05);
+        }
+
+        .timer-display {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--warning);
+            margin: 1.5rem 0;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .status-box {
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            margin: 1.5rem 0;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status-box.success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 2px solid var(--success);
+            color: var(--success);
+        }
+
+        .status-box.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid var(--danger);
+            color: var(--danger);
+        }
+
+        .status-box.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 2px solid var(--warning);
+            color: var(--warning);
+        }
+
+        .status-box.info {
+            background: rgba(37, 99, 235, 0.1);
+            border: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid var(--dark-3);
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* IDs Display */
+        .ids-container {
+            background: var(--dark);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            display: none;
+        }
+
+        .ids-container.active {
+            display: block;
+        }
+
+        .id-card {
+            background: var(--dark-2);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .id-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .id-title {
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 0.75rem;
+            font-size: 1.1rem;
+        }
+
+        .id-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            color: var(--gray);
+            font-size: 0.95rem;
+        }
+
+        .id-row span:last-child {
+            color: var(--light);
+            font-weight: 600;
+            word-break: break-all;
+        }
+
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .action-btn {
+            padding: 1rem;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.95rem;
+        }
+
+        .action-btn.primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .action-btn.secondary {
+            background: var(--dark);
+            color: var(--light);
+            border: 1px solid var(--border);
+        }
+
+        .action-btn:hover {
+            transform: scale(1.02);
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background: var(--dark-2);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--success);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+            animation: slideInRight 0.3s ease;
+        }
+
+        .toast.active {
+            display: flex;
+        }
+
+        .toast.error {
+            border-left-color: var(--danger);
+        }
+
+        .toast i {
+            color: var(--success);
+            font-size: 1.5rem;
+        }
+
+        .toast.error i {
+            color: var(--danger);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            .nav-menu {
+                display: none;
+            }
+
+            .services-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+
+            .stat-number {
+                font-size: 2.5rem;
+            }
+
+            .modal-content {
+                padding: 2rem 1.5rem;
+            }
+
+            .modal-title {
+                font-size: 1.5rem;
+            }
+
+            .price-amount {
+                font-size: 2.5rem;
+            }
+
+            .action-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .toast {
+                right: 1rem;
+                left: 1rem;
+            }
+
+            .qr-section img {
+                width: 240px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .logo {
+                font-size: 1.3rem;
+            }
+
+            .logo i {
+                font-size: 1.5rem;
+            }
+
+            .contact-icon {
+                width: 36px;
+                height: 36px;
+                font-size: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Announcement Bar -->
+    <div class="announcement" id="announcementBar" style="display: none;">
+        <span id="announcementText"></span>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="header-container">
+            <a href="/" class="logo">
+                <i class="fas fa-signal"></i>
+                OfflineSim
+            </a>
+            <nav class="nav-menu">
+                <a href="#services" class="nav-link">Services</a>
+                <a href="#features" class="nav-link">Features</a>
+                <a href="#" onclick="openRetrieveModal()" class="nav-link btn">
+                    <i class="fas fa-search"></i> Retrieve IDs
+                </a>
+            </nav>
+            <div class="contact-links">
+                <a href="#" id="whatsappLink" target="_blank" class="contact-icon whatsapp-icon">
+                    <i class="fab fa-whatsapp"></i>
+                </a>
+                <a href="#" id="telegramLink" target="_blank" class="contact-icon telegram-icon">
+                    <i class="fab fa-telegram"></i>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <h1>Premium Virtual Services</h1>
+        <p>Virtual numbers, verified IDs, and cloud accounts - all in one place. Fast, secure, and reliable services for your digital needs.</p>
+    </section>
+
+    <!-- Services Grid -->
+    <section class="services-grid" id="services">
+        <!-- Virtual Numbers -->
+        <div class="service-card" onclick="window.location.href='virtual-number.html'" style="cursor: pointer;">
+            <div class="service-icon">
+                <i class="fas fa-mobile-alt"></i>
+            </div>
+            <h2 class="service-title">Virtual Numbers</h2>
+            <p class="service-description">Get instant virtual phone numbers for SMS verification from multiple countries.</p>
+            <ul class="service-features">
+                <li><i class="fas fa-check-circle"></i> Instant activation</li>
+                <li><i class="fas fa-check-circle"></i> Multiple countries available</li>
+                <li><i class="fas fa-check-circle"></i> Receive SMS online</li>
+                <li><i class="fas fa-check-circle"></i> No physical SIM needed</li>
+            </ul>
+            <button class="service-btn">
+                Buy Virtual Number <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- Buy IDs -->
+        <div class="service-card" onclick="openServiceModal('id')">
+            <div class="service-icon">
+                <i class="fas fa-id-card"></i>
+            </div>
+            <h2 class="service-title">Verified IDs</h2>
+            <p class="service-description">Purchase premium verified and normal IDs with instant delivery and 24/7 support.</p>
+            <ul class="service-features">
+                <li><i class="fas fa-check-circle"></i> Verified & normal options</li>
+                <li><i class="fas fa-check-circle"></i> Fresh accounts</li>
+                <li><i class="fas fa-check-circle"></i> Instant delivery</li>
+                <li><i class="fas fa-check-circle"></i> Full credentials included</li>
+            </ul>
+            <button class="service-btn">
+                Buy IDs <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+
+        <!-- Cloud Accounts -->
+        <div class="service-card" onclick="openServiceModal('cloud')">
+            <div class="service-icon">
+                <i class="fas fa-cloud"></i>
+            </div>
+            <h2 class="service-title">Cloud Accounts</h2>
+            <p class="service-description">Premium cloud storage and computing accounts for all your business needs.</p>
+            <ul class="service-features">
+                <li><i class="fas fa-check-circle"></i> Multiple providers</li>
+                <li><i class="fas fa-check-circle"></i> High storage capacity</li>
+                <li><i class="fas fa-check-circle"></i> Secure & private</li>
+                <li><i class="fas fa-check-circle"></i> Instant access</li>
+            </ul>
+            <button class="service-btn">
+                Buy Cloud Account <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stats-grid">
+            <div class="stat-item" style="animation-delay: 0.1s;">
+                <div class="stat-number">10K+</div>
+                <div class="stat-label">Happy Customers</div>
+            </div>
+            <div class="stat-item" style="animation-delay: 0.2s;">
+                <div class="stat-number">50K+</div>
+                <div class="stat-label">Services Delivered</div>
+            </div>
+            <div class="stat-item" style="animation-delay: 0.3s;">
+                <div class="stat-number">24/7</div>
+                <div class="stat-label">Support Available</div>
+            </div>
+            <div class="stat-item" style="animation-delay: 0.4s;">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">Secure & Safe</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features" id="features">
+        <h2 class="features-title">Why Choose OfflineSim?</h2>
+        <div class="features-grid">
+            <div class="feature-card">
+                <i class="fas fa-bolt"></i>
+                <h3>Instant Delivery</h3>
+                <p>Get your services activated within seconds of payment confirmation</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-shield-alt"></i>
+                <h3>100% Secure</h3>
+                <p>All transactions are encrypted and your data is completely safe</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-headset"></i>
+                <h3>24/7 Support</h3>
+                <p>Our support team is always available to help you</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-sync-alt"></i>
+                <h3>Auto Replacement</h3>
+                <p>If any service fails, we automatically replace it for free</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-tags"></i>
+                <h3>Best Prices</h3>
+                <p>Competitive pricing with regular discounts and offers</p>
+            </div>
+            <div class="feature-card">
+                <i class="fas fa-check-circle"></i>
+                <h3>Verified Quality</h3>
+                <p>All our services are tested and verified before delivery</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer" id="about">
+        <div class="footer-content">
+            <div class="footer-logo">OfflineSim</div>
+            <p class="footer-text">Your trusted partner for virtual numbers, IDs, and cloud services</p>
+            <div class="footer-links">
+                <a href="#" class="footer-link">Terms of Service</a>
+                <a href="#" class="footer-link">Privacy Policy</a>
+                <a href="#" class="footer-link">Refund Policy</a>
+                <a href="#" class="footer-link">Contact Us</a>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2025 OfflineSim. All rights reserved. Sponsored by JIMMY</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Service Selection Modal -->
+    <div class="modal" id="serviceModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeServiceModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="modal-title" id="modalTitle">Select Service</h2>
+            <p class="modal-description" id="modalDescription">Choose your preferred option and quantity</p>
+
+            <form id="serviceForm">
+                <div class="form-group">
+                    <label class="form-label">Service Type</label>
+                    <select class="form-select" id="serviceType" onchange="updatePrice()">
+                        <option value="">Select type...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-input" id="quantity" min="1" value="1" placeholder="Enter quantity" oninput="updatePrice()">
+                </div>
+
+                <div class="price-display">
+                    <div class="price-label">Total Amount</div>
+                    <div class="price-amount" id="totalPrice">₹0</div>
+                </div>
+
+                <button type="button" class="modal-btn" id="proceedBtn" onclick="proceedToPayment()" disabled>
+                    Proceed to Payment <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div class="modal" id="paymentModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closePaymentModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="modal-title">Complete Payment</h2>
+
+            <div class="payment-info">
+                <div class="payment-row">
+                    <span>Service:</span>
+                    <span id="paymentService">-</span>
+                </div>
+                <div class="payment-row">
+                    <span>Type:</span>
+                    <span id="paymentType">-</span>
+                </div>
+                <div class="payment-row">
+                    <span>Quantity:</span>
+                    <span id="paymentQuantity">-</span>
+                </div>
+                <div class="payment-row">
+                    <span>Total Amount:</span>
+                    <span id="paymentAmount" style="color: var(--primary); font-size: 1.3rem;">₹0</span>
+                </div>
+            </div>
+
+            <div class="qr-section">
+                <h3 style="color: var(--light); margin-bottom: 1rem;">Scan QR Code to Pay</h3>
+                <img id="qrCodeImage" src="" alt="QR Code" style="display: none;">
+                <div id="noQRMessage" style="color: var(--gray); padding: 2rem;">QR Code will appear here</div>
+                
+                <div class="upi-box" id="upiBox" style="display: none;">
+                    <div class="upi-id" id="upiId">-</div>
+                    <button class="copy-btn" onclick="copyUPI()">
+                        <i class="fas fa-copy"></i> Copy
+                    </button>
+                </div>
+            </div>
+
+            <div class="timer-display">
+                <i class="fas fa-clock"></i> Time Left: <span id="paymentTimer">5:00</span>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Enter UTR Number</label>
+                <input type="text" class="form-input" id="utrInput" placeholder="Enter 12-digit UTR number" maxlength="12">
+                <small style="color: var(--gray); display: block; margin-top: 0.5rem;">
+                    UTR number is the transaction reference number from your payment app
+                </small>
+            </div>
+
+            <div class="status-box" id="paymentStatus"></div>
+
+            <div class="loading" id="paymentLoading">
+                <div class="spinner"></div>
+                <p style="color: var(--gray);">Processing payment...</p>
+            </div>
+
+            <div class="ids-container" id="idsContainer"></div>
+
+            <button class="modal-btn" id="submitPaymentBtn" onclick="submitPayment()">
+                <i class="fas fa-paper-plane"></i> Submit Payment
+            </button>
+        </div>
+    </div>
+
+    <!-- Retrieve IDs Modal -->
+    <div class="modal" id="retrieveModal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeRetrieveModal()">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="modal-title">
+                <i class="fas fa-search"></i> Retrieve Your IDs
+            </h2>
+            <p class="modal-description">Enter your UTR number to retrieve your purchased IDs</p>
+
+            <div class="form-group">
+                <label class="form-label">UTR Number</label>
+                <input type="text" class="form-input" id="retrieveUtrInput" placeholder="Enter your UTR number" maxlength="12">
+            </div>
+
+            <div class="status-box" id="retrieveStatus"></div>
+
+            <div class="loading" id="retrieveLoading">
+                <div class="spinner"></div>
+                <p style="color: var(--gray);">Searching for your order...</p>
+            </div>
+
+            <div class="ids-container" id="retrieveIdsContainer"></div>
+
+            <button class="modal-btn" id="retrieveBtn" onclick="retrieveIDs()">
+                <i class="fas fa-search"></i> Find My IDs
+            </button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMessage">Success!</span>
+    </div>
+
+    <script>
+        // Configuration
+        const config = {
+            whatsapp: 'https://wa.me/1234567890',
+            telegram: 'https://t.me/offlinesim',
+            announcement: '🎉 Special Offer: Get 20% off on all services! Limited time only.',
+            qrCode: '', // Add your QR code URL here
+            upiId: 'offlinesim@paytm' // Add your UPI ID here
+        };
+
+        // Service Data
+        const services = {
+            'virtual-number': {
+                title: 'Buy Virtual Number',
+                description: 'Select country and duration for your virtual number',
+                types: [
+                    { value: 'india-1day', label: 'India - 1 Day', price: 50 },
+                    { value: 'india-7days', label: 'India - 7 Days', price: 200 },
+                    { value: 'india-30days', label: 'India - 30 Days', price: 600 },
+                    { value: 'usa-1day', label: 'USA - 1 Day', price: 100 },
+                    { value: 'usa-7days', label: 'USA - 7 Days', price: 400 },
+                    { value: 'uk-1day', label: 'UK - 1 Day', price: 80 },
+                    { value: 'canada-1day', label: 'Canada - 1 Day', price: 90 }
+                ]
+            },
+            'id': {
+                title: 'Buy ID',
+                description: 'Choose between verified or normal IDs',
+                types: [
+                    { value: 'normal', label: 'Normal ID', price: 200 },
+                    { value: 'verified', label: 'Verified ID', price: 400 }
+                ]
+            },
+            'cloud': {
+                title: 'Buy Cloud Account',
+                description: 'Select your preferred cloud service provider',
+                types: [
+                    { value: 'google-basic', label: 'Google Drive - Basic (15GB)', price: 300 },
+                    { value: 'google-pro', label: 'Google Drive - Pro (100GB)', price: 800 },
+                    { value: 'dropbox-basic', label: 'Dropbox - Basic (2GB)', price: 200 },
+                    { value: 'dropbox-plus', label: 'Dropbox - Plus (2TB)', price: 1000 },
+                    { value: 'onedrive-basic', label: 'OneDrive - Basic (5GB)', price: 250 },
+                    { value: 'aws-starter', label: 'AWS - Starter', price: 1500 }
+                ]
+            }
+        };
+
+        let currentService = null;
+        let selectedPrice = 0;
+        let orderDetails = {};
+        let timerInterval = null;
+        let checkInterval = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set contact links
+            document.getElementById('whatsappLink').href = config.whatsapp;
+            document.getElementById('telegramLink').href = config.telegram;
+
+            // Show announcement
+            if (config.announcement) {
+                document.getElementById('announcementText').textContent = config.announcement;
+                document.getElementById('announcementBar').style.display = 'block';
+            }
+
+            // Load config from API (if available)
+            loadConfig();
+        });
+
+        // Load configuration from API
+        async function loadConfig() {
+            try {
+                const response = await fetch('/api/config');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.qr_code) {
+                        config.qrCode = data.qr_code;
+                    }
+                    if (data.upi_id) {
+                        config.upiId = data.upi_id;
+                    }
+                    if (data.whatsapp_link) {
+                        document.getElementById('whatsappLink').href = data.whatsapp_link;
+                    }
+                    if (data.telegram_link) {
+                        document.getElementById('telegramLink').href = data.telegram_link;
+                    }
+                    if (data.announcement) {
+                        document.getElementById('announcementText').textContent = data.announcement;
+                        document.getElementById('announcementBar').style.display = 'block';
+                    }
+                }
+            } catch (error) {
+                console.log('Config API not available, using default config');
+            }
+        }
+
+        // Service Modal Functions
+        function openServiceModal(serviceType) {
+            currentService = serviceType;
+            const service = services[serviceType];
+
+            document.getElementById('modalTitle').textContent = service.title;
+            document.getElementById('modalDescription').textContent = service.description;
+
+            const typeSelect = document.getElementById('serviceType');
+            typeSelect.innerHTML = '<option value="">Select type...</option>';
+            service.types.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type.value;
+                option.textContent = `${type.label} - ₹${type.price}`;
+                option.dataset.price = type.price;
+                typeSelect.appendChild(option);
+            });
+
+            document.getElementById('quantity').value = '1';
+            document.getElementById('totalPrice').textContent = '₹0';
+            document.getElementById('proceedBtn').disabled = true;
+
+            document.getElementById('serviceModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeServiceModal() {
+            document.getElementById('serviceModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            currentService = null;
+            selectedPrice = 0;
+        }
+
+        function updatePrice() {
+            const typeSelect = document.getElementById('serviceType');
+            const quantity = parseInt(document.getElementById('quantity').value) || 0;
+            const proceedBtn = document.getElementById('proceedBtn');
+
+            if (typeSelect.value && quantity > 0) {
+                const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+                selectedPrice = parseInt(selectedOption.dataset.price);
+                const total = selectedPrice * quantity;
+                document.getElementById('totalPrice').textContent = `₹${total}`;
+                proceedBtn.disabled = false;
+            } else {
+                document.getElementById('totalPrice').textContent = '₹0';
+                proceedBtn.disabled = true;
+            }
+        }
+
+        function proceedToPayment() {
+            const typeSelect = document.getElementById('serviceType');
+            const quantity = parseInt(document.getElementById('quantity').value);
+            const selectedOption = typeSelect.options[typeSelect.selectedIndex];
+
+            if (!typeSelect.value || !quantity) {
+                showToast('Please select service type and quantity', 'error');
+                return;
+            }
+
+            const total = selectedPrice * quantity;
+
+            orderDetails = {
+                service: currentService,
+                type: typeSelect.value,
+                typeLabel: selectedOption.textContent,
+                quantity: quantity,
+                amount: total
+            };
+
+            // Close service modal
+            closeServiceModal();
+
+            // Open payment modal
+            openPaymentModal();
+        }
+
+        // Payment Modal Functions
+        function openPaymentModal() {
+            document.getElementById('paymentService').textContent = orderDetails.service;
+            document.getElementById('paymentType').textContent = orderDetails.typeLabel;
+            document.getElementById('paymentQuantity').textContent = orderDetails.quantity;
+            document.getElementById('paymentAmount').textContent = `₹${orderDetails.amount}`;
+
+            // Show QR code if available
+            if (config.qrCode) {
+                document.getElementById('qrCodeImage').src = config.qrCode;
+                document.getElementById('qrCodeImage').style.display = 'block';
+                document.getElementById('noQRMessage').style.display = 'none';
+            }
+
+            // Show UPI ID if available
+            if (config.upiId) {
+                document.getElementById('upiId').textContent = config.upiId;
+                document.getElementById('upiBox').style.display = 'flex';
+            }
+
+            // Reset form
+            document.getElementById('utrInput').value = '';
+            document.getElementById('paymentStatus').style.display = 'none';
+            document.getElementById('idsContainer').classList.remove('active');
+            document.getElementById('submitPaymentBtn').style.display = 'block';
+
+            // Start timer
+            startPaymentTimer();
+
+            document.getElementById('paymentModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+            clearInterval(timerInterval);
+            clearInterval(checkInterval);
+        }
+
+        function startPaymentTimer() {
+            let timeLeft = 300; // 5 minutes
+            clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                document.getElementById('paymentTimer').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('paymentTimer').textContent = 'Expired';
+                }
+            }, 1000);
+        }
+
+        function copyUPI() {
+            const upiId = config.upiId;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(upiId)
+                    .then(() => showToast('UPI ID copied!'))
+                    .catch(() => fallbackCopy(upiId));
+            } else {
+                fallbackCopy(upiId);
+            }
+        }
+
+        function fallbackCopy(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Copied!');
+            } catch (err) {
+                showToast('Copy failed', 'error');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        async function submitPayment() {
+            const utr = document.getElementById('utrInput').value.trim();
+            const statusBox = document.getElementById('paymentStatus');
+            const loading = document.getElementById('paymentLoading');
+
+            if (!utr || utr.length < 10) {
+                statusBox.className = 'status-box error';
+                statusBox.textContent = '❌ Please enter a valid UTR number (minimum 10 digits)';
+                statusBox.style.display = 'block';
+                return;
+            }
+
+            loading.classList.add('active');
+            document.getElementById('submitPaymentBtn').disabled = true;
+
+            try {
+                const response = await fetch('/api/submit-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        utr: utr,
+                        amount: orderDetails.amount,
+                        quantity: orderDetails.quantity,
+                        type: orderDetails.type,
+                        service: orderDetails.service
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    if (data.approved) {
+                        showSuccessWithIDs(data.ids);
+                    } else if (data.pending) {
+                        statusBox.className = 'status-box warning';
+                        statusBox.innerHTML = '⏳ Order Submitted!<br><small>Waiting for admin approval...</small>';
+                        statusBox.style.display = 'block';
+                        document.getElementById('submitPaymentBtn').style.display = 'none';
+                        checkOrderStatus(utr);
+                    }
+                } else {
+                    statusBox.className = 'status-box error';
+                    statusBox.textContent = '❌ ' + (data.error || 'Order submission failed');
+                    statusBox.style.display = 'block';
+                    document.getElementById('submitPaymentBtn').disabled = false;
+                }
+            } catch (error) {
+                statusBox.className = 'status-box error';
+                statusBox.textContent = '❌ Network error: ' + error.message;
+                statusBox.style.display = 'block';
+                document.getElementById('submitPaymentBtn').disabled = false;
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        async function checkOrderStatus(utr) {
+            clearInterval(checkInterval);
+
+            checkInterval = setInterval(async () => {
+                try {
+                    const response = await fetch('/api/check-order-status', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ utr: utr })
+                    });
+
+                    const data = await response.json();
+
+                    if (data.approved) {
+                        clearInterval(checkInterval);
+                        showSuccessWithIDs(data.ids);
+                    } else if (data.rejected) {
+                        clearInterval(checkInterval);
+                        const statusBox = document.getElementById('paymentStatus');
+                        statusBox.className = 'status-box error';
+                        statusBox.textContent = '❌ Order rejected. Please contact support.';
+                        statusBox.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Check error:', error);
+                }
+            }, 5000);
+        }
+
+        function showSuccessWithIDs(ids) {
+            const statusBox = document.getElementById('paymentStatus');
+            statusBox.className = 'status-box success';
+            statusBox.textContent = '✅ Payment Approved! Your IDs are ready.';
+            statusBox.style.display = 'block';
+
+            const container = document.getElementById('idsContainer');
+            container.innerHTML = '';
+
+            ids.forEach((id, index) => {
+                const card = document.createElement('div');
+                card.className = 'id-card';
+                card.innerHTML = `
+                    <div class="id-title">ID #${index + 1}</div>
+                    <div class="id-row">
+                        <span>User ID:</span>
+                        <span>${id.userid || 'N/A'}</span>
+                    </div>
+                    <div class="id-row">
+                        <span>Password:</span>
+                        <span>${id.password || 'N/A'}</span>
+                    </div>
+                    <div class="id-row">
+                        <span>Email:</span>
+                        <span>${id.email || 'N/A'}</span>
+                    </div>
+                    <div class="id-row">
+                        <span>Email Password:</span>
+                        <span>${id.email_password || 'N/A'}</span>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            // Add action buttons
+            const actions = document.createElement('div');
+            actions.className = 'action-buttons';
+            actions.innerHTML = `
+                <button class="action-btn primary" onclick="copyAllIDs()">
+                    <i class="fas fa-copy"></i> Copy All
+                </button>
+                <button class="action-btn secondary" onclick="downloadIDs()">
+                    <i class="fas fa-download"></i> Download
+                </button>
+            `;
+            container.appendChild(actions);
+
+            container.classList.add('active');
+            document.getElementById('submitPaymentBtn').style.display = 'none';
+        }
+
+        function copyAllIDs() {
+            const cards = document.querySelectorAll('#idsContainer .id-card');
+            let text = 'OfflineSim - Your IDs\n\n';
+
+            cards.forEach((card, index) => {
+                const rows = card.querySelectorAll('.id-row');
+                text += `ID #${index + 1}\n`;
+                rows.forEach(row => {
+                    const spans = row.querySelectorAll('span');
+                    text += `${spans[0].textContent} ${spans[1].textContent}\n`;
+                });
+                text += '\n' + '='.repeat(50) + '\n\n';
+            });
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(() => showToast('All IDs copied!'))
+                    .catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        async function downloadIDs() {
+            const utr = document.getElementById('utrInput').value.trim();
+            try {
+                const response = await fetch('/api/download-ids', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utr: utr })
+                });
+
+                if (!response.ok) throw new Error('Download failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `offlinesim_${orderDetails.quantity}ids.txt`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast('Download started!');
+            } catch (error) {
+                showToast('Download failed: ' + error.message, 'error');
+            }
+        }
+
+        // Retrieve IDs Modal Functions
+        function openRetrieveModal() {
+            document.getElementById('retrieveUtrInput').value = '';
+            document.getElementById('retrieveStatus').style.display = 'none';
+            document.getElementById('retrieveIdsContainer').classList.remove('active');
+            document.getElementById('retrieveBtn').disabled = false;
+            document.getElementById('retrieveBtn').style.display = 'block';
+            document.getElementById('retrieveModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeRetrieveModal() {
+            document.getElementById('retrieveModal').classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        async function retrieveIDs() {
+            const utr = document.getElementById('retrieveUtrInput').value.trim();
+            const statusBox = document.getElementById('retrieveStatus');
+            const loading = document.getElementById('retrieveLoading');
+            const container = document.getElementById('retrieveIdsContainer');
+
+            if (!utr || utr.length < 10) {
+                statusBox.className = 'status-box error';
+                statusBox.textContent = '❌ Please enter a valid UTR number (minimum 10 digits)';
+                statusBox.style.display = 'block';
+                return;
+            }
+
+            loading.classList.add('active');
+            document.getElementById('retrieveBtn').disabled = true;
+            statusBox.style.display = 'none';
+            container.classList.remove('active');
+
+            try {
+                const response = await fetch('/api/check-order-status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utr: utr })
+                });
+
+                const data = await response.json();
+
+                if (data.approved && data.ids && data.ids.length > 0) {
+                    statusBox.className = 'status-box success';
+                    statusBox.innerHTML = `✅ Found ${data.ids.length} IDs!`;
+                    statusBox.style.display = 'block';
+
+                    container.innerHTML = '';
+
+                    data.ids.forEach((id, index) => {
+                        const card = document.createElement('div');
+                        card.className = 'id-card';
+                        card.innerHTML = `
+                            <div class="id-title">ID #${index + 1}</div>
+                            <div class="id-row">
+                                <span>User ID:</span>
+                                <span>${id.userid || 'N/A'}</span>
+                            </div>
+                            <div class="id-row">
+                                <span>Password:</span>
+                                <span>${id.password || 'N/A'}</span>
+                            </div>
+                            <div class="id-row">
+                                <span>Email:</span>
+                                <span>${id.email || 'N/A'}</span>
+                            </div>
+                            <div class="id-row">
+                                <span>Email Password:</span>
+                                <span>${id.email_password || 'N/A'}</span>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+
+                    // Add action buttons
+                    const actions = document.createElement('div');
+                    actions.className = 'action-buttons';
+                    actions.innerHTML = `
+                        <button class="action-btn primary" onclick="copyRetrievedIDs()">
+                            <i class="fas fa-copy"></i> Copy All
+                        </button>
+                        <button class="action-btn secondary" onclick="downloadRetrievedIDs('${utr}', ${data.ids.length})">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                    `;
+                    container.appendChild(actions);
+
+                    container.classList.add('active');
+                    document.getElementById('retrieveBtn').style.display = 'none';
+                } else if (data.pending) {
+                    statusBox.className = 'status-box warning';
+                    statusBox.innerHTML = '⏳ Order is pending approval<br><small>Please wait for admin approval</small>';
+                    statusBox.style.display = 'block';
+                    document.getElementById('retrieveBtn').disabled = false;
+                } else {
+                    statusBox.className = 'status-box error';
+                    statusBox.innerHTML = '❌ No approved order found with this UTR<br><small>Please check your UTR number and try again</small>';
+                    statusBox.style.display = 'block';
+                    document.getElementById('retrieveBtn').disabled = false;
+                }
+            } catch (error) {
+                statusBox.className = 'status-box error';
+                statusBox.innerHTML = '❌ Error: ' + error.message + '<br><small>Please try again later</small>';
+                statusBox.style.display = 'block';
+                document.getElementById('retrieveBtn').disabled = false;
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+
+        function copyRetrievedIDs() {
+            const cards = document.querySelectorAll('#retrieveIdsContainer .id-card');
+            let text = 'OfflineSim - Your IDs\n\n';
+
+            cards.forEach((card, index) => {
+                const rows = card.querySelectorAll('.id-row');
+                text += `ID #${index + 1}\n`;
+                rows.forEach(row => {
+                    const spans = row.querySelectorAll('span');
+                    text += `${spans[0].textContent} ${spans[1].textContent}\n`;
+                });
+                text += '\n' + '='.repeat(50) + '\n\n';
+            });
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text)
+                    .then(() => showToast('All IDs copied!'))
+                    .catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        async function downloadRetrievedIDs(utr, count) {
+            try {
+                const response = await fetch('/api/download-ids', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ utr: utr })
+                });
+
+                if (!response.ok) throw new Error('Download failed');
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `offlinesim_${count}ids.txt`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+                showToast('Download started!');
+            } catch (error) {
+                showToast('Download failed: ' + error.message, 'error');
+            }
+        }
+
+        // Toast Notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = toast.querySelector('i');
+            const messageSpan = document.getElementById('toastMessage');
+
+            if (type === 'error') {
+                toast.classList.add('error');
+                icon.className = 'fas fa-exclamation-circle';
+            } else {
+                toast.classList.remove('error');
+                icon.className = 'fas fa-check-circle';
+            }
+
+            messageSpan.textContent = message;
+            toast.classList.add('active');
+
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const href = this.getAttribute('href');
+                if (href !== '#' && href.startsWith('#')) {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+
+        // Close modals on outside click
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    this.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                    clearInterval(timerInterval);
+                    clearInterval(checkInterval);
+                }
+            });
+        });
+
+        // Close modals on ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const activeModal = document.querySelector('.modal.active');
+                if (activeModal) {
+                    activeModal.classList.remove('active');
+                    document.body.style.overflow = 'auto';
+                    clearInterval(timerInterval);
+                    clearInterval(checkInterval);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
