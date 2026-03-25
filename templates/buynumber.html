@@ -321,8 +321,6 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 
 <script>
 const SKEY  = 'a362879eb1515c86208a58f8557c9a7a3ab0';
-const SBASE = 'https://api.smsindia.pro/stubs/handler_api.php';
-const PROXY = 'https://corsproxy.io/?url=';
 
 let currentUser   = null;
 let allCountries  = [];
@@ -334,15 +332,11 @@ let servicePrices = [];
 let showAllC      = false;
 let activeCount   = 0;
 
+// Server-side proxy — no CORS issues
 async function smsApi(params) {
-  const url = `${SBASE}?${params}`;
-  try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error('direct');
-    return r;
-  } catch(e) {
-    return fetch(PROXY + encodeURIComponent(url));
-  }
+  const r = await fetch('/api/sms-proxy?' + params);
+  if (!r.ok) throw new Error('API error: ' + r.status);
+  return r;
 }
 
 document.addEventListener('DOMContentLoaded', () => {

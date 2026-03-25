@@ -527,6 +527,17 @@ def order_details(order_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 
+@app.route('/api/sms-proxy')
+def sms_proxy():
+    """Server-side proxy for SMSindia API — avoids CORS issues"""
+    import requests as req
+    params = request.args.to_dict()
+    try:
+        r = req.get('https://api.smsindia.pro/stubs/handler_api.php', params=params, timeout=15)
+        return r.text, 200, {'Content-Type': 'text/plain'}
+    except Exception as e:
+        return str(e), 500
+
 @app.route('/api/health')
 def health_check():
     """Check if service is running"""
@@ -835,16 +846,3 @@ def update_links():
     if 'apk_url'       in data: update['apk_url']       = data['apk_url'].strip()
     config_collection.update_one({}, {'$set': update}, upsert=True)
     return jsonify({'success': True, 'message': 'Links update ho gaye!'})
-
-
-if __name__ == '__main__':
-    os.makedirs('templates', exist_ok=True)
-    print("\n" + "="*50)
-    print("🚀 ReplitStore Customer Site Starting...")
-    print("="*50)
-    print(f"🌐 Customer Site: http://localhost:5000/")
-    print(f"📊 Health Check: http://localhost:5000/api/health")
-    print(f"⚡ Auto Payment: ENABLED")
-    print(f"👑 VIP UTR: ENABLED")
-    print("="*50 + "\n")
-    app.run(debug=True, host='0.0.0.0', port=5002)
