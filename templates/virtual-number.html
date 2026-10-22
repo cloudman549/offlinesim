@@ -224,6 +224,22 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 #toast{position:fixed;bottom:1.5rem;right:1.5rem;padding:.7rem 1.2rem;border-radius:10px;font-size:.87rem;font-weight:700;z-index:99999;transform:translateY(12px);opacity:0;transition:all .3s;pointer-events:none;font-family:'Nunito',sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.15)}
 #toast.on{transform:translateY(0);opacity:1}
 
+/* searchable dropdown */
+.ss-wrap{position:relative;width:100%}
+.ss-input{width:100%;padding:.75rem .9rem;border:1.5px solid var(--border);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;color:var(--text);outline:none;background:white;cursor:pointer;transition:border-color .2s}
+.ss-input:focus{border-color:var(--primary)}
+.ss-list{position:fixed;background:white;border:1.5px solid var(--border);border-radius:9px;max-height:210px;overflow-y:auto;z-index:9999;display:none;box-shadow:0 6px 24px rgba(0,0,0,.12);min-width:200px}
+.ss-list.open{display:block}
+.ss-opt{padding:.6rem .9rem;font-size:.87rem;font-weight:600;color:var(--text);cursor:pointer;transition:background .15s}
+.ss-opt:hover,.ss-opt.hl{background:var(--primary-light);color:var(--primary)}
+.ss-empty{padding:.6rem .9rem;font-size:.85rem;color:var(--text2)}
+/* active items */
+.ai-row{display:flex;align-items:center;gap:.6rem;padding:.55rem .7rem;background:#f8faff;border:1px solid var(--border);border-radius:8px;margin-top:.5rem;flex-wrap:wrap}
+.ai-val{font-family:var(--mono);font-size:.85rem;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ai-svc{font-size:.72rem;font-weight:700;color:var(--text2);white-space:nowrap}
+.ai-timer{font-family:var(--mono);font-size:.78rem;font-weight:800;color:var(--primary);white-space:nowrap}
+.ai-timer.urg{color:var(--danger)}
+
 /* responsive */
 @media(max-width:900px){
   :root{--sidebar-w:0px}
@@ -256,7 +272,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div class="modal-ov" id="passModal">
   <div class="mbox">
     <div class="mbox-title"><i class="fas fa-key"></i> Set Email Password</div>
-    <div class="mbox-sub">Temp email ke liye ek password set karo. Browser mein save hoga.<br><span style="font-size:.72rem;color:var(--warn)"><i class="fas fa-info-circle"></i> Default: India@123 (agar skip kiya)</span></div>
+    <div class="mbox-sub">Set a password for your temp email. Saved in browser.<br><span style="font-size:.72rem;color:var(--warn)"><i class="fas fa-info-circle"></i> Default: Offlinesim@123 (if skipped)</span></div>
     <div class="pw-inp-w">
       <input class="pw-inp" type="password" id="pwInp" placeholder="Min 8 characters" oninput="checkStr(this.value)">
       <button class="eye-btn" onclick="toggleEye()"><i class="fas fa-eye" id="eyeIco"></i></button>
@@ -295,14 +311,14 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="auth-logo-name">Offline<span>Sim</span></div>
     </div>
     <h2 class="auth-h">Welcome back</h2>
-    <p class="auth-sub">Login karke virtual numbers buy karo</p>
+    <p class="auth-sub">Login to buy virtual numbers</p>
     <div class="auth-alert" id="loginAlert"></div>
     <form onsubmit="doLogin(event)">
       <div class="field"><label>Email / Telegram</label><div class="inp-w"><i class="fas fa-user inp-ico"></i><input class="finp" type="text" id="lUser" placeholder="Email ya Telegram ID" required></div></div>
       <div class="field"><label>Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="lPass" placeholder="Password" required></div></div>
       <button class="auth-btn" type="submit"><i class="fas fa-sign-in-alt"></i> Login</button>
     </form>
-    <div class="auth-footer">Account nahi hai? <a onclick="showReg()">Register karo</a></div>
+    <div class="auth-footer">Don't have an account? <a onclick="showReg()">Register</a> &nbsp;|&nbsp; <a onclick="showForgot()">Forgot Password?</a></div>
   </div>
   <div class="auth-card" id="regCard" style="display:none">
     <div class="auth-logo-row">
@@ -310,17 +326,60 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="auth-logo-name">Offline<span>Sim</span></div>
     </div>
     <h2 class="auth-h">Create Account</h2>
-    <p class="auth-sub">Register karke services use karo</p>
+    <p class="auth-sub">Register to start using services</p>
     <div class="auth-alert" id="regAlert"></div>
-    <form onsubmit="doReg(event)">
+    <form onsubmit="doSendRegOtp(event)">
       <div class="field"><label>Email</label><div class="inp-w"><i class="fas fa-envelope inp-ico"></i><input class="finp" type="email" id="rEmail" placeholder="your@email.com" required></div></div>
       <div class="field"><label>Telegram ID</label><div class="inp-w"><i class="fab fa-telegram inp-ico"></i><input class="finp" type="text" id="rTg" placeholder="@username" required></div></div>
       <div class="field"><label>WhatsApp</label><div class="inp-w"><i class="fab fa-whatsapp inp-ico"></i><input class="finp" type="tel" id="rWa" placeholder="+91XXXXXXXXXX" required></div></div>
-      <div class="field"><label>Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="rPass" placeholder="Min 8 characters" required></div></div>
+      <div class="field"><label>Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="rPass" placeholder="Min 6 characters" required></div></div>
       <div class="field"><label>Confirm Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="rConf" placeholder="Repeat password" required></div></div>
-      <button class="auth-btn" type="submit"><i class="fas fa-user-plus"></i> Create Account</button>
+      <button class="auth-btn" type="submit" id="regSendOtpBtn"><i class="fas fa-envelope"></i> Send OTP to Email</button>
     </form>
-    <div class="auth-footer">Account hai? <a onclick="showLogin()">Login karo</a></div>
+    <div class="auth-footer">Already have an account? <a onclick="showLogin()">Login</a></div>
+  </div>
+  <!-- OTP Verify Card (Register) -->
+  <div class="auth-card" id="regOtpCard" style="display:none">
+    <div class="auth-logo-row">
+      <div class="auth-logo-icon"><i class="fas fa-shield-alt"></i></div>
+      <div class="auth-logo-name">Offline<span>Sim</span></div>
+    </div>
+    <h2 class="auth-h">Verify Email</h2>
+    <p class="auth-sub" id="regOtpSub">OTP sent to your email</p>
+    <div class="auth-alert" id="regOtpAlert"></div>
+    <div class="field"><label>Enter OTP</label><div class="inp-w"><i class="fas fa-key inp-ico"></i><input class="finp" type="text" id="regOtpInp" placeholder="6-digit OTP" maxlength="6" inputmode="numeric"></div></div>
+    <button class="auth-btn" onclick="doVerifyRegOtp()"><i class="fas fa-check-circle"></i> Verify & Create Account</button>
+    <div class="auth-footer"><a onclick="showReg()">← Back</a> &nbsp;|&nbsp; <a onclick="doSendRegOtp(null,true)">Resend OTP</a></div>
+  </div>
+  <!-- Forgot Password Card -->
+  <div class="auth-card" id="forgotCard" style="display:none">
+    <div class="auth-logo-row">
+      <div class="auth-logo-icon"><i class="fas fa-key"></i></div>
+      <div class="auth-logo-name">Offline<span>Sim</span></div>
+    </div>
+    <h2 class="auth-h">Reset Password</h2>
+    <p class="auth-sub">Enter your registered email to receive OTP</p>
+    <div class="auth-alert" id="forgotAlert"></div>
+    <form onsubmit="doSendForgotOtp(event)">
+      <div class="field"><label>Email</label><div class="inp-w"><i class="fas fa-envelope inp-ico"></i><input class="finp" type="email" id="forgotEmail" placeholder="your@email.com" required></div></div>
+      <button class="auth-btn" type="submit" id="forgotSendBtn"><i class="fas fa-envelope"></i> Send OTP</button>
+    </form>
+    <div class="auth-footer"><a onclick="showLogin()">← Back to Login</a></div>
+  </div>
+  <!-- Forgot OTP + New Password Card -->
+  <div class="auth-card" id="forgotOtpCard" style="display:none">
+    <div class="auth-logo-row">
+      <div class="auth-logo-icon"><i class="fas fa-lock"></i></div>
+      <div class="auth-logo-name">Offline<span>Sim</span></div>
+    </div>
+    <h2 class="auth-h">New Password</h2>
+    <p class="auth-sub" id="forgotOtpSub">OTP sent to your email</p>
+    <div class="auth-alert" id="forgotOtpAlert"></div>
+    <div class="field"><label>OTP</label><div class="inp-w"><i class="fas fa-key inp-ico"></i><input class="finp" type="text" id="forgotOtpInp" placeholder="6-digit OTP" maxlength="6" inputmode="numeric"></div></div>
+    <div class="field"><label>New Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="forgotNewPass" placeholder="Min 6 characters"></div></div>
+    <div class="field"><label>Confirm Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="forgotConfPass" placeholder="Repeat password"></div></div>
+    <button class="auth-btn" onclick="doResetPassword()"><i class="fas fa-check-circle"></i> Reset Password</button>
+    <div class="auth-footer"><a onclick="showForgot()">← Back</a> &nbsp;|&nbsp; <a onclick="doSendForgotOtp(null,true)">Resend OTP</a></div>
   </div>
 </div>
 
@@ -349,6 +408,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="sb-item" onclick="goPage('accHistory',this)"><i class="fas fa-clock-rotate-left"></i><span>Account History</span></div>
       <div class="sb-section">Tools</div>
       <div class="sb-item" onclick="goPage('tempMail',this)"><i class="fas fa-envelope"></i><span>Temp Mail</span></div>
+      <div class="sb-item" onclick="goPage('tempGmail',this)"><i class="fas fa-at"></i><span>Temp Gmail</span></div>
+      <div class="sb-item" onclick="goPage('mailHistory',this)"><i class="fas fa-history"></i><span>Mail History</span></div>
       <div class="sb-item" onclick="goPage('apiGateway',this)"><i class="fas fa-code"></i><span>API Gateway</span></div>
       <div class="sb-section">Account</div>
       <div class="sb-item" onclick="goPage('help',this)"><i class="fas fa-question-circle"></i><span>Help</span></div>
@@ -398,6 +459,11 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
             <button onclick="openBuyPage()" style="padding:.7rem 1.3rem;background:var(--primary);color:white;border:none;border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.5rem"><i class="fas fa-mobile-alt"></i> Buy Number</button>
             <button onclick="goPage('recharge',null)" style="padding:.7rem 1.3rem;background:white;color:var(--primary);border:1.5px solid var(--primary);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.5rem"><i class="fas fa-wallet"></i> Recharge</button>
             <button onclick="goPage('tempMail',null)" style="padding:.7rem 1.3rem;background:white;color:var(--text);border:1.5px solid var(--border);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.5rem"><i class="fas fa-envelope"></i> Temp Mail</button>
+            <button onclick="goPage('tempGmail',null)" style="padding:.7rem 1.3rem;background:white;color:var(--text);border:1.5px solid var(--border);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:.5rem"><i class="fas fa-at"></i> Temp Gmail</button>
+          </div>
+          <div id="activeItemsSection" style="display:none;margin-top:1rem;border-top:1px solid var(--border);padding-top:.9rem">
+            <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--text2);margin-bottom:.4rem"><i class="fas fa-circle" style="color:var(--success);font-size:.5rem;vertical-align:middle"></i> Live Numbers & Emails</div>
+            <div id="activeItemsList"></div>
           </div>
         </div>
       </div>
@@ -413,7 +479,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
         <div style="background:white;border:1px solid var(--border);border-radius:var(--radius);padding:2.5rem;text-align:center;max-width:480px">
           <div style="font-size:3rem;margin-bottom:1rem"><i class="fas fa-mobile-alt" style="color:var(--primary);opacity:.8"></i></div>
           <div style="font-size:1.1rem;font-weight:800;margin-bottom:.4rem;color:var(--text)">Buy Virtual Number</div>
-          <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem;line-height:1.6">Country → Operator → Service select karo aur number lo</div>
+          <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem;line-height:1.6">Select Country → Operator → Service and get your number</div>
           <button onclick="openBuyPage()" style="padding:.85rem 2rem;background:var(--primary);color:white;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;box-shadow:0 4px 14px rgba(67,97,238,.3);transition:all .2s" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">
             <i class="fas fa-shopping-cart"></i> Buy Number
           </button>
@@ -424,9 +490,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
       <div class="page" id="pg-recharge">
         <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.4rem;color:var(--text)"><i class="fas fa-wallet" style="color:var(--primary)"></i> Recharge Balance</div>
         <div class="rech-grid">
-          <div class="step-card"><div class="step-num">1</div><div class="step-txt">QR code scan karo ya UPI ID se payment karo</div></div>
-          <div class="step-card"><div class="step-num">2</div><div class="step-txt">Payment ke baad UTR/Reference number note karo</div></div>
-          <div class="step-card"><div class="step-num">3</div><div class="step-txt">Neeche UTR enter karo — auto verify hoga instantly</div></div>
+          <div class="step-card"><div class="step-num">1</div><div class="step-txt">Scan QR code or pay via UPI ID</div></div>
+          <div class="step-card"><div class="step-num">2</div><div class="step-txt">Note your UTR/Reference number after payment</div></div>
+          <div class="step-card"><div class="step-num">3</div><div class="step-txt">Enter UTR below — auto verified instantly</div></div>
         </div>
         <div class="qr-sec">
           <div class="qr-box">
@@ -451,7 +517,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
           <div class="alert-row" id="rechAlert"></div>
           <input type="text" class="utr-inp" id="utrInp" placeholder="Enter UTR (1-12 characters)" maxlength="12">
           <button class="submit-btn" id="submitBtn" onclick="submitUTR()"><i class="fas fa-check-circle"></i> Verify & Add Balance</button>
-          <div class="pending-row" id="pendRow"><i class="fas fa-circle blink" style="color:var(--warn);font-size:.5rem"></i><span>Order pending — admin approval ka wait hai. Auto-checking har 10 sec...</span></div>
+          <div class="pending-row" id="pendRow"><i class="fas fa-circle blink" style="color:var(--warn);font-size:.5rem"></i><span>Order pending — waiting for admin approval. Auto-checking every 10 sec...</span></div>
         </div>
       </div>
 
@@ -485,7 +551,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
             <div class="card-head"><div class="card-title"><i class="fas fa-sign-in-alt"></i> Login with Existing Mail</div></div>
             <div class="card-body">
               <div class="alert-row" id="mailLoginAlert"></div>
-              <div class="field" style="margin-bottom:.8rem"><label>Mail.tm Email</label><div class="inp-w"><i class="fas fa-envelope inp-ico"></i><input class="finp" type="email" id="mlEmail" placeholder="your@mail.tm"></div></div>
+              <div class="field" style="margin-bottom:.8rem"><label>Email</label><div class="inp-w"><i class="fas fa-envelope inp-ico"></i><input class="finp" type="email" id="mlEmail" placeholder="Enter your email"></div></div>
               <div class="field" style="margin-bottom:.8rem"><label>Password</label><div class="inp-w"><i class="fas fa-lock inp-ico"></i><input class="finp" type="password" id="mlPass" placeholder="Your password"></div></div>
               <button onclick="loginMail()" style="padding:.75rem 1.5rem;background:var(--primary);color:white;border:none;border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem"><i class="fas fa-sign-in-alt"></i> Login & Read Inbox</button>
             </div>
@@ -500,12 +566,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
                   <i class="fas fa-lock"></i><span id="passStatus">Password set — click to change</span>
                 </div>
                 <button class="gen-btn" id="genBtn" onclick="genEmail()"><i class="fas fa-plus-circle"></i> Generate New Email</button>
-                <div id="mailBox" style="display:none">
-                  <div class="mail-addr-row"><span class="mail-addr-val" id="mailAddr">—</span><button class="cp-sm" onclick="cpMail()">Copy</button></div>
-                  <div class="timer-disp" id="mailTimer">05:00</div>
-                  <div style="font-size:.73rem;color:var(--text2);text-align:center;margin-bottom:.8rem">Session time remaining</div>
-                  <div class="otp-disp" id="mailOtp">Waiting for OTP...</div>
-                </div>
+                <div id="mailCardList"></div>
               </div>
             </div>
             <div class="card">
@@ -523,6 +584,49 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- ── TEMP GMAIL ── -->
+      <div class="page" id="pg-tempGmail">
+        <div style="font-size:1.3rem;font-weight:800;margin-bottom:1.2rem;color:var(--text)"><i class="fas fa-at" style="color:var(--primary)"></i> Temp Gmail</div>
+        <div class="alert-row" id="gmailAlert"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+          <div class="card">
+            <div class="card-head"><div class="card-title"><i class="fas fa-globe"></i> Domain</div></div>
+            <div class="card-body">
+              <select id="domainSelect" onchange="pickDomain(this.value)" style="width:100%;padding:.75rem;border:1.5px solid var(--border);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;color:var(--text);outline:none;background:white">
+                <option value="">-- Select Domain --</option>
+                <option value="gmail.com">Gmail (gmail.com)</option>
+                <option value="mailnestpro.com">Mailnestpro (mailnestpro.com)</option>
+                <option value="hihinail.com">Hihinail (hihinail.com)</option>
+                <option value="flytempbox.com">Flytempbox (flytempbox.com)</option>
+                <option value="mailburstx.com">Mailburstx (mailburstx.com)</option>
+              </select>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><i class="fas fa-list"></i> Service</div></div>
+            <div class="card-body">
+              <div class="ss-wrap">
+                <input class="ss-input" id="serviceInput" placeholder="Select domain first..." autocomplete="off" oninput="filterSS('service')" onfocus="openSS('service')" onblur="closeSS('service')" disabled>
+                <div class="ss-list" id="serviceList"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button id="gmailBuyBtn" onclick="buyEmail()" disabled style="padding:.85rem 2rem;background:var(--primary);color:white;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:.95rem;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:.6rem;box-shadow:0 4px 14px rgba(67,97,238,.3);opacity:.5">
+          <i class="fas fa-paper-plane"></i> Get Email
+        </button>
+        <div id="gmailList" style="margin-top:1rem"></div>
+      </div>
+
+      <!-- ── MAIL HISTORY ── -->
+      <div class="page" id="pg-mailHistory">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.2rem;flex-wrap:wrap;gap:.8rem">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--text)"><i class="fas fa-history" style="color:var(--primary)"></i> Mail History</div>
+          <button onclick="clearMailHistory()" style="padding:.45rem 1rem;background:white;color:var(--danger);border:1px solid #fecaca;border-radius:8px;font-family:'Nunito',sans-serif;font-size:.82rem;font-weight:700;cursor:pointer"><i class="fas fa-trash"></i> Clear All</button>
+        </div>
+        <div id="mailHistoryList"><div style="text-align:center;padding:3rem;color:var(--text2);font-size:.9rem"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.7rem;opacity:.3"></i>No mail history found</div></div>
       </div>
 
       <!-- ── API GATEWAY ── -->
@@ -546,9 +650,29 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
               <div><div style="font-weight:800;font-size:.92rem;color:var(--text)">Telegram Support</div><div style="font-size:.78rem;color:var(--text2);margin-top:.2rem">Join our Telegram group</div></div>
             </div>
           </a>
-          <div class="card" style="padding:1.4rem;display:flex;align-items:center;gap:1rem;cursor:pointer;transition:box-shadow .2s" onclick="toast('Online support chat coming soon!')" onmouseover="this.style.boxShadow='0 4px 20px rgba(245,158,11,.15)'" onmouseout="this.style.boxShadow=''">
-            <div style="width:48px;height:48px;background:#fffbeb;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--warn);flex-shrink:0"><i class="fas fa-headset"></i></div>
-            <div><div style="font-weight:800;font-size:.92rem;color:var(--text)">Online Support</div><div style="font-size:.78rem;color:var(--text2);margin-top:.2rem">Live chat support</div></div>
+          <div class="card" style="padding:1.4rem;cursor:pointer;transition:box-shadow .2s" onclick="openChat()" onmouseover="this.style.boxShadow='0 4px 20px rgba(245,158,11,.15)'" onmouseout="this.style.boxShadow=''">
+            <div style="display:flex;align-items:center;gap:1rem">
+              <div style="width:48px;height:48px;background:#fffbeb;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:var(--warn);flex-shrink:0"><i class="fas fa-headset"></i></div>
+              <div><div style="font-weight:800;font-size:.92rem;color:var(--text)">Live Support Chat</div><div style="font-size:.78rem;color:var(--text2);margin-top:.2rem">Chat with our team — we reply soon</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── SUPPORT CHAT BOX ── -->
+        <div id="chatBox" style="display:none;margin-top:1.2rem">
+          <div class="card" style="padding:0;overflow:hidden">
+            <div style="background:var(--primary);color:white;padding:.9rem 1.2rem;display:flex;align-items:center;justify-content:space-between">
+              <div style="font-weight:800;font-size:.95rem"><i class="fas fa-headset"></i> Support Chat</div>
+              <button onclick="closeChat()" style="background:rgba(255,255,255,.2);border:none;color:white;border-radius:6px;padding:.3rem .7rem;cursor:pointer;font-size:.82rem"><i class="fas fa-times"></i></button>
+            </div>
+            <div id="chatMsgs" style="height:320px;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.6rem;background:#f8faff">
+              <div style="text-align:center;color:var(--text2);font-size:.82rem;padding:1rem">Send a message to start the conversation</div>
+            </div>
+            <div style="padding:.8rem 1rem;border-top:1px solid var(--border);display:flex;gap:.6rem">
+              <input id="chatInp" type="text" placeholder="Type your message..." onkeydown="if(event.key==='Enter')sendChat()"
+                style="flex:1;padding:.7rem .9rem;border:1.5px solid var(--border);border-radius:9px;font-family:'Nunito',sans-serif;font-size:.88rem;outline:none">
+              <button onclick="sendChat()" style="padding:.7rem 1.2rem;background:var(--primary);color:white;border:none;border-radius:9px;font-size:.88rem;font-weight:700;cursor:pointer;white-space:nowrap"><i class="fas fa-paper-plane"></i></button>
+            </div>
           </div>
         </div>
       </div>
@@ -559,7 +683,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
         <div class="card" style="max-width:400px;padding:2rem;text-align:center">
           <div style="font-size:4rem;margin-bottom:1rem"><i class="fab fa-android" style="color:#22c55e"></i></div>
           <div style="font-size:1.1rem;font-weight:800;margin-bottom:.5rem">OfflineSim Android App</div>
-          <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem">Admin panel se latest APK download karo</div>
+          <div style="font-size:.85rem;color:var(--text2);margin-bottom:1.5rem">Download the latest APK from admin panel</div>
           <button onclick="downloadAPK()" style="padding:.9rem 2rem;background:var(--primary);color:white;border:none;border-radius:10px;font-family:'Nunito',sans-serif;font-size:.92rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:.5rem;transition:all .2s" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'"><i class="fas fa-download"></i> Download APK</button>
         </div>
       </div>
@@ -575,8 +699,9 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 // ════════════════════════════════════════
 //  CONFIG
 // ════════════════════════════════════════
-const SKEY   = 'a362879eb1515c86208a58f8557c9a7a3ab0';
-const SBASE  = 'https://api.smsindia.pro/stubs/handler_api.php';
+const SKEY      = '9f15743ed56779bfb281ec85a3d2ab27';
+const SBASE     = 'https://grizzlysms.com/stubs/handler_api.php';
+const FLASK_URL = 'https://marcescent-distinguishing-gertrudis.ngrok-free.dev';
 const PROXY  = 'https://corsproxy.io/?url=';
 const OP     = '1';
 
@@ -585,7 +710,7 @@ function openBuyPage() {
   window.location.href = '/buynumber';
 }
 const PASS_KEY   = 'offlinesim_mail_pass';
-const DEF_PASS   = 'India@123';
+const DEF_PASS   = 'Offlinesim@123';
 const MAIL_SECS  = 300;
 
 let currentUser = null;
@@ -606,6 +731,7 @@ document.addEventListener('DOMContentLoaded', () => {
   else    { document.getElementById('loginWrap').classList.add('on'); }
   loadConfig();
   updatePassBanner();
+  loadActiveItems();
 });
 
 // ════════════════════════════════════════
@@ -637,13 +763,25 @@ async function downloadAPK() {
 // ════════════════════════════════════════
 //  AUTH
 // ════════════════════════════════════════
+let _regData = {};   // temp store while waiting for OTP
+let _forgotEmail = '';
+
+function hideAllAuthCards() {
+  ['loginCard','regCard','regOtpCard','forgotCard','forgotOtpCard'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.style.display='none';
+  });
+}
 function showReg() {
-  document.getElementById('loginCard').style.display='none';
+  hideAllAuthCards();
   document.getElementById('regCard').style.display='block';
 }
 function showLogin() {
-  document.getElementById('regCard').style.display='none';
+  hideAllAuthCards();
   document.getElementById('loginCard').style.display='block';
+}
+function showForgot() {
+  hideAllAuthCards();
+  document.getElementById('forgotCard').style.display='block';
 }
 async function doLogin(e) {
   e.preventDefault();
@@ -662,35 +800,95 @@ async function doLogin(e) {
     document.getElementById('loginWrap').classList.remove('on');
     showApp();
   } catch(ex) {
-    showAl(al, '❌ Server se connect nahi ho pa raha.', 'err');
+    showAl(al, '❌ Could not connect to server.', 'err');
   } finally {
     btn.disabled = false; btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Login';
   }
 }
-async function doReg(e) {
-  e.preventDefault();
-  const p1 = document.getElementById('rPass').value;
-  const p2 = document.getElementById('rConf').value;
-  const al = document.getElementById('regAlert');
-  if (p1 !== p2) { showAl(al,'❌ Passwords match nahi','err'); return; }
-  const btn = e.target.querySelector('button[type=submit]');
-  btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch spin"></i> Registering...';
+async function doSendRegOtp(e, resend) {
+  if (e) e.preventDefault();
+  const al  = document.getElementById('regAlert');
+  const p1  = document.getElementById('rPass').value;
+  const p2  = document.getElementById('rConf').value;
+  if (!resend && p1 !== p2) { showAl(al,'❌ Passwords do not match','err'); return; }
+  const email = document.getElementById('rEmail').value.trim();
+  if (!email) { showAl(al,'❌ Email is required','err'); return; }
+  const btn = document.getElementById('regSendOtpBtn');
+  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Sending OTP...';
   try {
-    const r = await fetch('/api/register', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        email:    document.getElementById('rEmail').value.trim(),
-        telegram: document.getElementById('rTg').value.trim(),
-        whatsapp: document.getElementById('rWa').value.trim(),
-        password: p1
-      })});
+    const r = await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email, purpose:'register'})});
     const d = await r.json();
-    if (!d.success) { showAl(al, '❌ ' + d.error, 'err'); return; }
-    showAl(al,'✅ Registration ho gaya! Ab login karo.','ok');
+    if (!d.success) { showAl(al,'❌ '+d.error,'err'); return; }
+    _regData = {
+      email,
+      telegram: document.getElementById('rTg').value.trim(),
+      whatsapp:  document.getElementById('rWa').value.trim(),
+      password:  p1
+    };
+    document.getElementById('regOtpSub').textContent = 'OTP sent to '+email;
+    hideAllAuthCards();
+    document.getElementById('regOtpCard').style.display='block';
+  } catch(ex) {
+    showAl(al,'❌ Could not connect to server.','err');
+  } finally {
+    btn.disabled=false; btn.innerHTML='<i class="fas fa-envelope"></i> Send OTP to Email';
+  }
+}
+async function doVerifyRegOtp() {
+  const al  = document.getElementById('regOtpAlert');
+  const otp = document.getElementById('regOtpInp').value.trim();
+  if (!otp) { showAl(al,'❌ Enter the OTP','err'); return; }
+  try {
+    const r = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({..._regData, otp})});
+    const d = await r.json();
+    if (!d.success) { showAl(al,'❌ '+d.error,'err'); return; }
+    showAl(al,'✅ Account created! Please login.','ok');
     setTimeout(showLogin, 1800);
   } catch(ex) {
-    showAl(al, '❌ Server se connect nahi ho pa raha.', 'err');
+    showAl(al,'❌ Could not connect to server.','err');
+  }
+}
+async function doSendForgotOtp(e, resend) {
+  if (e) e.preventDefault();
+  const al    = document.getElementById('forgotAlert');
+  const email = resend ? _forgotEmail : document.getElementById('forgotEmail').value.trim();
+  if (!email) { showAl(al,'❌ Email is required','err'); return; }
+  const btn = document.getElementById('forgotSendBtn');
+  if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Sending OTP...'; }
+  try {
+    const r = await fetch('/api/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email, purpose:'forgot'})});
+    const d = await r.json();
+    if (!d.success) { showAl(al,'❌ '+d.error,'err'); return; }
+    _forgotEmail = email;
+    document.getElementById('forgotOtpSub').textContent = 'OTP sent to '+email;
+    hideAllAuthCards();
+    document.getElementById('forgotOtpCard').style.display='block';
+  } catch(ex) {
+    showAl(al,'❌ Could not connect to server.','err');
   } finally {
-    btn.disabled = false; btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+    if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-envelope"></i> Send OTP'; }
+  }
+}
+async function doResetPassword() {
+  const al   = document.getElementById('forgotOtpAlert');
+  const otp  = document.getElementById('forgotOtpInp').value.trim();
+  const np   = document.getElementById('forgotNewPass').value;
+  const cp   = document.getElementById('forgotConfPass').value;
+  if (!otp)     { showAl(al,'❌ Enter the OTP','err'); return; }
+  if (np !== cp){ showAl(al,'❌ Passwords do not match','err'); return; }
+  if (np.length < 6){ showAl(al,'❌ Password too short (min 6)','err'); return; }
+  try {
+    const r = await fetch('/api/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:_forgotEmail, otp, new_password:np})});
+    const d = await r.json();
+    if (!d.success) { showAl(al,'❌ '+d.error,'err'); return; }
+    showAl(al,'✅ Password reset! Please login.','ok');
+    setTimeout(showLogin, 1800);
+  } catch(ex) {
+    showAl(al,'❌ Could not connect to server.','err');
   }
 }
 function showApp() {
@@ -706,7 +904,7 @@ function showApp() {
   if (dashNums) dashNums.textContent = hist.length;
 }
 function doLogout() {
-  if (!confirm('Logout karna chahte ho?')) return;
+  if (!confirm('Are you sure you want to logout?')) return;
   localStorage.removeItem('vnUser');
   clearInterval(pendIv); clearInterval(otpIv); clearInterval(inboxIv); clearInterval(mTimer);
   location.reload();
@@ -729,6 +927,8 @@ const pgTitles = {
   numHistory: ['Number History','All purchased numbers'],
   accHistory: ['Account History','Transactions & balance'],
   tempMail:   ['Temp Mail','Disposable email'],
+  tempGmail:  ['Temp Gmail','Buy email from any domain'],
+  mailHistory:['Mail History','All generated emails'],
   apiGateway: ['API Gateway','Developer access'],
   help:       ['Help & Support','Documentation'],
   installApp: ['Install App','Download mobile app']
@@ -749,6 +949,8 @@ function goPage(name, el) {
   document.getElementById('tbSub').textContent   = t[1];
   if (name==='numHistory')  renderNumHist();
   if (name==='accHistory')  renderAccHist();
+  if (name==='dashboard')   loadActiveItems();
+  if (name==='mailHistory') renderMailHistory();
   if (window.innerWidth<=900) document.getElementById('sidebar').classList.remove('mob-open');
 }
 function toggleSb() {
@@ -766,7 +968,7 @@ async function submitUTR() {
   const utr = document.getElementById('utrInp').value.trim();
   clearInterval(pendIv);
   document.getElementById('pendRow').classList.remove('on');
-  if (!utr) { showAlId('rechAlert','❌ UTR enter karo','err'); return; }
+  if (!utr) { showAlId('rechAlert','❌ Please enter UTR','err'); return; }
   if (utr.length > 12) { showAlId('rechAlert','❌ UTR max 12 characters','err'); return; }
   if (!/^[a-zA-Z0-9]+$/.test(utr)) { showAlId('rechAlert','❌ UTR sirf letters/numbers','err'); return; }
   const btn = document.getElementById('submitBtn');
@@ -780,7 +982,7 @@ async function submitUTR() {
       localStorage.setItem('vnUser',JSON.stringify(currentUser));
       updBal();
       txHist.push({utr, amount:data.amount, status:'Approved', time:new Date().toLocaleString()});
-      showAlId('rechAlert',`✅ ₹${data.amount} balance add ho gaya!`,'ok');
+      showAlId('rechAlert',`✅ ₹${data.amount} balance added successfully!`,'ok');
     } else if (data.success && data.pending) {
       pendUTR = utr;
       document.getElementById('pendRow').classList.add('on');
@@ -809,12 +1011,12 @@ function startPendPoll(utr) {
         localStorage.setItem('vnUser',JSON.stringify(currentUser));
         updBal();
         const h = txHist.find(t=>t.utr===utr); if(h){h.status='Approved';h.amount=data.amount;}
-        showAlId('rechAlert',`✅ Approved! ₹${data.amount} balance add ho gaya.`,'ok');
+        showAlId('rechAlert',`✅ Approved! ₹${data.amount} balance added.`,'ok');
       } else if (data.rejected) {
         clearInterval(pendIv);
         document.getElementById('pendRow').classList.remove('on');
         const h = txHist.find(t=>t.utr===utr); if(h) h.status='Rejected';
-        showAlId('rechAlert','❌ Order reject ho gaya. Support se contact karo.','err');
+        showAlId('rechAlert','❌ Order rejected. Please contact support.','err');
       }
     } catch(_){}
   }, 10000);
@@ -852,76 +1054,132 @@ async function loginMail() {
   const email = document.getElementById('mlEmail').value.trim();
   const pass  = document.getElementById('mlPass').value.trim();
   const al    = document.getElementById('mailLoginAlert');
-  if (!email||!pass) { showAl(al,'❌ Email aur password enter karo','err'); return; }
+  if (!email||!pass) { showAl(al,'❌ Please enter email and password','err'); return; }
   try {
-    const tr = await fetch('https://api.mail.tm/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:email,password:pass})});
+    const tr = await fetch('/api/mail-proxy?path=token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:email,password:pass})});
     if (!tr.ok) { showAl(al,'❌ Login failed — email ya password galat hai','err'); return; }
-    mToken = (await tr.json()).token;
-    mAddr  = email;
-    showAl(al,'✅ Login successful! Inbox load ho raha hai...','ok');
-    // Show inbox (reuse same inbox panel)
-    clearInterval(inboxIv); inboxIv = setInterval(fetchInbox, 4800); fetchInbox();
+    const token = (await tr.json()).token;
+    mToken = token; mAddr = email;
+    showAl(al,'✅ Login successful! Loading inbox...','ok');
+    // Create a login card in mailCardList
+    const mid = 'mc_login_'+Date.now();
+    mailCards[mid] = { token, secs: MAIL_SECS, timerIv: null, inboxIv: null };
+    addMailCard(mid, email);
+    startMailCardTimer(mid);
+    startMailCardInbox(mid);
   } catch(e) { showAl(al,'❌ Server error','err'); }
 }
 
 const N1=['rahul','aman','vikash','rohan','sachin','arjun','karan','nikhil','yash','aditya','sawan','ravi','deepak','ankit','mohit'];
 const N2=['kumar','singh','sharma','yadav','gupta','verma','mishra','patel','jha','thakur'];
+const mailCards = {}; // { mid: { token, secs, timerIv, inboxIv } }
+
 async function genEmail() {
+  // Balance check for temp mail
+  const mailPrice = parseFloat(cfgData.temp_mail_price || 0);
+  if (mailPrice > 0 && currentUser) {
+    const bal = parseFloat(currentUser.balance || 0);
+    if (bal < mailPrice) {
+      toast(`Insufficient balance. Temp Mail costs ₹${mailPrice}. Please recharge.`, 'err');
+      return;
+    }
+  }
   const btn = document.getElementById('genBtn');
   btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Creating...';
-  clearInterval(mTimer); clearInterval(inboxIv); mToken=null;
   await showProc();
   try {
-    const dr  = await fetch('https://api.mail.tm/domains');
-    if (!dr.ok) throw new Error('No domains');
+    const dr  = await fetch('/api/mail-proxy?path=domains');
+    if (!dr.ok) throw new Error(dr.status===429?'Rate limited, try again in a minute':'No domains ('+dr.status+')');
     const dd  = await dr.json();
     const dom = dd['hydra:member']?.[0]?.domain;
     if (!dom) throw new Error('No domain');
-    mAddr = rUser()+'@'+dom;
-    const pw = localStorage.getItem(PASS_KEY)||DEF_PASS;
-    const ar = await fetch('https://api.mail.tm/accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:mAddr,password:pw})});
-    if (!ar.ok) throw new Error('Account failed');
-    const tr = await fetch('https://api.mail.tm/token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:mAddr,password:pw})});
-    if (!tr.ok) throw new Error('Auth failed');
-    mToken = (await tr.json()).token;
-    document.getElementById('mailAddr').textContent = mAddr;
-    document.getElementById('mailBox').style.display = 'block';
-    document.getElementById('mailOtp').textContent = 'Waiting for OTP...';
-    document.getElementById('mailOtp').classList.remove('got');
-    addMailHist(mAddr);
+    const addr = (await rUser())+'@'+dom;
+    const pw   = localStorage.getItem(PASS_KEY)||DEF_PASS;
+    const ar   = await fetch('/api/mail-proxy?path=accounts',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:addr,password:pw})});
+    if (!ar.ok) throw new Error(ar.status===429?'Rate limited, try again in a minute':'Account failed ('+ar.status+')');
+    const tr   = await fetch('/api/mail-proxy?path=token',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({address:addr,password:pw})});
+    if (!tr.ok) throw new Error('Auth failed ('+tr.status+')');
+    const token = (await tr.json()).token;
+    const mid   = 'mc_'+Date.now();
+    mailCards[mid] = { token, secs: MAIL_SECS, timerIv: null, inboxIv: null };
+    addMailCard(mid, addr);
+    startMailCardTimer(mid);
+    startMailCardInbox(mid);
+    addMailHist(addr);
     mailCount++;
     document.getElementById('dashMails').textContent = mailCount;
-    startMTimer(); startInbox();
+    // Deduct balance if price set
+    if (mailPrice > 0 && currentUser) {
+      const dr2 = await fetch('/api/deduct-balance',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:currentUser.id, amount:mailPrice})});
+      const dd2 = await dr2.json();
+      if (dd2.success) { currentUser.balance=dd2.new_balance; localStorage.setItem('vnUser',JSON.stringify(currentUser)); updBal(); }
+    }
   } catch(e) { toast('Error: '+(e.message||'Unknown'),'err'); }
   finally { btn.innerHTML='<i class="fas fa-plus-circle"></i> Generate New Email'; btn.disabled=false; hideProc(); }
 }
-function cpMail() { clip(mAddr, 'Email copied!'); }
-function startMTimer() {
-  mSecs=MAIL_SECS; updTimer();
-  document.getElementById('mailTimer').classList.remove('urg');
-  mTimer=setInterval(()=>{
-    mSecs--; updTimer();
-    if (mSecs<=60) document.getElementById('mailTimer').classList.add('urg');
-    if (mSecs<=0) { clearInterval(mTimer); clearInterval(inboxIv); document.getElementById('mailTimer').textContent='00:00'; }
-  },1000);
+
+function addMailCard(mid, addr) {
+  const list = document.getElementById('mailCardList');
+  const card = document.createElement('div');
+  card.id = 'mcard-'+mid;
+  card.style.cssText = 'background:#f8faff;border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;margin-top:.7rem';
+  card.innerHTML = `
+    <div class="mail-addr-row" style="margin-bottom:.4rem">
+      <span class="mail-addr-val">${addr}</span>
+      <button class="cp-sm" onclick="clip('${addr}','Email copied!')">Copy</button>
+    </div>
+    <div class="timer-disp" id="mt-${mid}" style="font-size:1.3rem">05:00</div>
+    <div style="font-size:.72rem;color:var(--text2);text-align:center;margin-bottom:.6rem">Session time remaining</div>
+    <div class="otp-disp" id="mo-${mid}">Waiting for OTP...</div>
+    <button id="moc-${mid}" onclick="clip(document.getElementById('mo-${mid}').textContent,'OTP copied!')" style="display:none;margin-top:.5rem;padding:.32rem .85rem;background:#dcfce7;color:var(--success);border:1px solid #bbf7d0;border-radius:7px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif"><i class="fas fa-copy"></i> Copy OTP</button>`;
+  list.prepend(card);
 }
-function updTimer() { const m=String(Math.floor(mSecs/60)).padStart(2,'0');const s=String(mSecs%60).padStart(2,'0');document.getElementById('mailTimer').textContent=m+':'+s; }
-function startInbox() { clearInterval(inboxIv); fetchInbox(); inboxIv=setInterval(fetchInbox,4800); }
-async function fetchInbox() {
-  if (!mToken||mSecs<=0) return;
-  try {
-    const r = await fetch('https://api.mail.tm/messages?page=1&limit=10',{headers:{Authorization:'Bearer '+mToken}});
-    if (!r.ok) return;
-    const d = await r.json();
-    const msgs = d['hydra:member']||[];
-    document.getElementById('inboxCnt').textContent='('+msgs.length+')';
-    if (!msgs.length) return;
-    renderInbox(msgs);
-    const first = msgs[0];
-    const txt = (first.intro||'')+' '+(first.subject||'');
-    const otp = txt.match(/\b\d{4,8}\b/)?.[0];
-    if (otp) { document.getElementById('mailOtp').textContent=otp; document.getElementById('mailOtp').classList.add('got'); }
-  } catch(_) {}
+
+function startMailCardTimer(mid) {
+  const c = mailCards[mid];
+  const timerEl = () => document.getElementById('mt-'+mid);
+  c.timerIv = setInterval(() => {
+    c.secs--;
+    const m = String(Math.floor(c.secs/60)).padStart(2,'0');
+    const s = String(c.secs%60).padStart(2,'0');
+    const el = timerEl();
+    if (!el) { clearInterval(c.timerIv); clearInterval(c.inboxIv); return; }
+    el.textContent = m+':'+s;
+    if (c.secs<=60) el.classList.add('urg');
+    if (c.secs<=0) {
+      clearInterval(c.timerIv); clearInterval(c.inboxIv);
+      const card = document.getElementById('mcard-'+mid);
+      if (card) card.remove();
+      delete mailCards[mid];
+    }
+  }, 1000);
+}
+
+function startMailCardInbox(mid) {
+  const c = mailCards[mid];
+  const poll = async () => {
+    if (!c || c.secs<=0) return;
+    try {
+      const r = await fetch('/api/mail-proxy?path=messages&page=1&limit=10',{headers:{Authorization:'Bearer '+c.token}});
+      if (!r.ok) return;
+      const d = await r.json();
+      const msgs = d['hydra:member']||[];
+      document.getElementById('inboxCnt').textContent='('+msgs.length+')';
+      if (!msgs.length) return;
+      renderInbox(msgs);
+      const txt = (msgs[0].intro||'')+' '+(msgs[0].subject||'');
+      const otp = txt.match(/\b\d{4,8}\b/)?.[0];
+      if (otp) {
+        const oel = document.getElementById('mo-'+mid);
+        const ocb = document.getElementById('moc-'+mid);
+        if (oel) { oel.textContent=otp; oel.classList.add('got'); }
+        if (ocb) ocb.style.display='inline-block';
+      }
+    } catch(_) {}
+  };
+  poll();
+  c.inboxIv = setInterval(poll, 4800);
 }
 function renderInbox(msgs) {
   document.getElementById('inboxPanel').innerHTML = msgs.map(m=>{
@@ -931,14 +1189,56 @@ function renderInbox(msgs) {
   }).join('');
 }
 function addMailHist(email) {
+  // DOM (recent emails card)
   const h = document.getElementById('mailHistBox');
   if (h.querySelector('div[style]')) h.innerHTML='';
   const d = document.createElement('div');
   d.className='mail-hist-item';
   d.innerHTML=`<span class="mail-hist-addr">${email}</span><span class="mail-hist-time">${new Date().toLocaleTimeString()}</span>`;
   h.prepend(d);
+  // localStorage
+  const hist = JSON.parse(localStorage.getItem('vn_mail_hist')||'[]');
+  hist.unshift({ email, time: new Date().toLocaleString() });
+  localStorage.setItem('vn_mail_hist', JSON.stringify(hist.slice(0,200)));
 }
-function rUser(){ const a=N1[Math.floor(Math.random()*N1.length)];const b=N2[Math.floor(Math.random()*N2.length)];const n=Math.floor(10000+Math.random()*90000);return [a+b+n,a+n,b+n][Math.floor(Math.random()*3)]; }
+
+function renderMailHistory() {
+  const hist = JSON.parse(localStorage.getItem('vn_mail_hist')||'[]');
+  const el   = document.getElementById('mailHistoryList');
+  if (!hist.length) {
+    el.innerHTML='<div style="text-align:center;padding:3rem;color:var(--text2);font-size:.9rem"><i class="fas fa-inbox" style="font-size:2rem;display:block;margin-bottom:.7rem;opacity:.3"></i>No mail history found</div>';
+    return;
+  }
+  el.innerHTML = hist.map((h,i)=>`
+    <div class="mail-hist-item" style="padding:.6rem .9rem;margin-bottom:.4rem">
+      <span style="font-size:.78rem;color:var(--text2);font-weight:700;min-width:28px">${i+1}.</span>
+      <span class="mail-hist-addr" style="flex:1;font-family:var(--mono);font-size:.85rem">${h.email}</span>
+      <span class="mail-hist-time">${h.time}</span>
+      <button onclick="clip('${h.email}','Email copied!')" style="margin-left:.5rem;padding:.22rem .6rem;background:var(--primary-light);color:var(--primary);border:1px solid #c7d2fe;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif"><i class="fas fa-copy"></i></button>
+    </div>`).join('');
+}
+
+function clearMailHistory() {
+  if (!confirm('Delete all mail history?')) return;
+  localStorage.removeItem('vn_mail_hist');
+  renderMailHistory();
+}
+async function rUser() {
+  const digits = () => String(Math.floor(Math.random()*9000+100)); // 3-4 digits
+  try {
+    const r = await fetch('https://random-indian-name-generator.vercel.app/api/random_name', {signal: AbortSignal.timeout(4000)});
+    if (r.ok) {
+      const d = await r.json();
+      const fn = (d.firstName||'').toLowerCase().replace(/[^a-z]/g,'');
+      const ln = (d.lastName||'').toLowerCase().replace(/[^a-z]/g,'');
+      if (fn && ln) return fn + ln + digits();
+    }
+  } catch(_) {}
+  // Fallback to local arrays
+  const a=N1[Math.floor(Math.random()*N1.length)];
+  const b=N2[Math.floor(Math.random()*N2.length)];
+  return a+b+digits();
+}
 
 // ════════════════════════════════════════
 //  PASSWORD MODAL
@@ -951,15 +1251,15 @@ function updatePassBanner() {
   const b   = document.getElementById('passBanner');
   const s   = document.getElementById('passStatus');
   if (set) { b.className='pass-banner set'; s.textContent='Password set — click to change'; }
-  else     { b.className='pass-banner notset'; s.textContent='⚠️ No password set (default: India@123). Click to set.'; }
+  else     { b.className='pass-banner notset'; s.textContent='⚠️ No password set (default: Offlinesim@123). Click to set.'; }
 }
 function savePass(){
   const p1=document.getElementById('pwInp').value.trim();
   const p2=document.getElementById('pwConf').value.trim();
-  if(p1.length<8){toast('Min 8 characters chahiye','err');return;}
-  if(p1!==p2){toast('Passwords match nahi','err');return;}
+  if(p1.length<8){toast('Minimum 8 characters required','err');return;}
+  if(p1!==p2){toast('Passwords do not match','err');return;}
   localStorage.setItem(PASS_KEY,p1);
-  toast('Password save ho gaya ✓');
+  toast('Password saved ✓');
   closeModal(); updatePassBanner();
 }
 function toggleEye(){const i=document.getElementById('pwInp');const ico=document.getElementById('eyeIco');i.type=i.type==='password'?'text':'password';ico.className='fas fa-eye'+(i.type==='text'?'-slash':'');}
@@ -995,6 +1295,341 @@ function toast(msg,type='ok'){const el=document.getElementById('toast');el.textC
 function esc(s){return String(s).replace(/'/g,"\\'")}
 function cflag(id){const m={'1':'🇷🇺','2':'🇺🇦','3':'🇰🇿','4':'🇨🇳','5':'🇵🇭','6':'🇲🇲','7':'🇮🇩','8':'🇲🇾','9':'🇰🇪','10':'🇹🇿','11':'🇻🇳','12':'🇰🇬','13':'🇺🇸','14':'🇮🇱','15':'🇭🇰','16':'🇵🇱','17':'🇬🇧','18':'🇮🇳','19':'🇳🇬','20':'🇧🇷','21':'🇪🇬','22':'🇲🇦','23':'🇿🇦','24':'🇩🇪','25':'🇫🇷'};return m[String(id)]||'🌐';}
 function sicon(c){const m={wa:'📱',tg:'✈️',ig:'📷',fb:'👤',tw:'🐦',go:'🔍',am:'🛒',yt:'▶️',tk:'🎵',nf:'🎬',wc:'💬',li:'💼',vi:'📹',sk:'💻',sp:'🎵',pa:'💳',pp:'💸',ub:'🚗',ok:'👥',vk:'💬',mm:'📞',npd:'💘',ape:'🧭',ipa:'🅰️',rpe:'🚖',ibo:'💬',tya:'🎮',avo:'📮',oql:'🟣',ews:'💬'};return m[c]||'📲';}
+
+// ════════════════════════════════════════
+//  SEARCHABLE DROPDOWN
+// ════════════════════════════════════════
+const SS_DOMAINS = [
+  {code:'gmail.com',      name:'Gmail'},
+  {code:'mailnestpro.com',name:'Mailnestpro'},
+  {code:'hihinail.com',   name:'Hihinail'},
+  {code:'flytempbox.com', name:'Flytempbox'},
+  {code:'mailburstx.com', name:'Mailburstx'}
+];
+let ssData  = { domain: SS_DOMAINS, service: [] };
+let ssVal   = { domain: '', service: '' };
+let ssOpen  = { domain: false, service: false };
+let ssClose = {};
+
+function renderSS(key) {
+  const q   = document.getElementById(key+'Input').value.toLowerCase();
+  const list= ssData[key].filter(o => o.name.toLowerCase().includes(q) || o.code.toLowerCase().includes(q));
+  const el  = document.getElementById(key+'List');
+  el.innerHTML = list.length
+    ? list.map(o=>`<div class="ss-opt${ssVal[key]===o.code?' hl':''}" onmousedown="pickSS('${key}','${o.code}','${o.name.replace(/'/g,"\\'")}')">${o.name} <span style="font-size:.73rem;color:var(--text2)">${o.code}</span></div>`).join('')
+    : '<div class="ss-empty">No results found</div>';
+}
+function openSS(key)  {
+  if(key==='service'&&!selGmailDomain)return;
+  clearTimeout(ssClose[key]); ssOpen[key]=true;
+  const inp  = document.getElementById(key+'Input');
+  const list = document.getElementById(key+'List');
+  const rect = inp.getBoundingClientRect();
+  list.style.top   = (rect.bottom + 4) + 'px';
+  list.style.left  = rect.left + 'px';
+  list.style.width = rect.width + 'px';
+  list.classList.add('open');
+  renderSS(key);
+}
+function closeSS(key) { ssClose[key]=setTimeout(()=>{ document.getElementById(key+'List').classList.remove('open'); ssOpen[key]=false; },180); }
+function filterSS(key){ renderSS(key); }
+function pickSS(key, code, name) {
+  ssVal[key] = code; selGmailService = code;
+  document.getElementById(key+'Input').value = name;
+  document.getElementById(key+'List').classList.remove('open');
+  ssOpen[key] = false;
+  updateGmailBtn();
+}
+
+function pickDomain(domain) {
+  selGmailDomain = domain;
+  ssVal.service = ''; selGmailService = '';
+  const svcInp = document.getElementById('serviceInput');
+  svcInp.value = ''; svcInp.disabled = !domain; svcInp.placeholder = domain ? 'Search service...' : 'Pehle domain chuno...';
+  if (domain) loadMailServices();
+  updateGmailBtn();
+}
+
+// ════════════════════════════════════════
+//  TEMP GMAIL
+// ════════════════════════════════════════
+let selGmailDomain  = '';
+let selGmailService = '';
+
+async function loadMailServices() {
+  const inp = document.getElementById('serviceInput');
+  inp.placeholder = 'Loading...'; inp.disabled = true;
+  try {
+    const r = await fetch('/api/mail-services');
+    const d = await r.json();
+    if (!d.success) throw new Error(d.error);
+    ssData.service = d.services;
+    inp.placeholder = 'Search service...'; inp.disabled = false;
+  } catch(e) {
+    inp.placeholder = 'Failed to load';
+  }
+}
+
+function updateGmailBtn() {
+  const btn = document.getElementById('gmailBuyBtn');
+  const ready = selGmailDomain && selGmailService;
+  btn.disabled = !ready;
+  btn.style.opacity = ready ? '1' : '.5';
+  btn.style.cursor  = ready ? 'pointer' : 'not-allowed';
+}
+
+async function buyEmail(domain, service) {
+  const d = domain  || selGmailDomain;
+  const s = service || selGmailService;
+  if (!d || !s) return;
+
+  // Balance check for temp gmail (only on fresh buy, not on "Next" retry)
+  const gmailPrice = parseFloat(cfgData.temp_gmail_price || 0);
+  if (!domain && gmailPrice > 0 && currentUser) {
+    const bal = parseFloat(currentUser.balance || 0);
+    if (bal < gmailPrice) {
+      showAlId('gmailAlert', `Insufficient balance. Temp Gmail costs ₹${gmailPrice}. Please recharge.`, 'err');
+      return;
+    }
+  }
+
+  // spinner card
+  const tmpId = 'etmp_' + Date.now();
+  const list  = document.getElementById('gmailList');
+  const spin  = document.createElement('div');
+  spin.id = tmpId;
+  spin.style.cssText = 'background:white;border:1px dashed var(--border);border-radius:12px;padding:1rem 1.2rem;display:flex;align-items:center;gap:.8rem;margin-bottom:.7rem;color:var(--text2)';
+  spin.innerHTML = '<i class="fas fa-circle-notch spin" style="font-size:1.3rem;color:var(--primary)"></i><span style="font-weight:700;font-size:.9rem">Getting email...</span>';
+  list.prepend(spin);
+
+  // disable buy btn if main call
+  const btn = document.getElementById('gmailBuyBtn');
+  if (!domain) { btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Getting...'; }
+
+  try {
+    const r = await fetch(`${FLASK_URL}/buy_email?domain=${encodeURIComponent(d)}&service=${encodeURIComponent(s)}`, {
+      headers: { 'ngrok-skip-browser-warning': 'true' }
+    });
+    const res = await r.json();
+    if (!res.success) throw new Error(res.error || 'Could not get email');
+    const email     = res.email || res.address || '';
+    const expireAt  = Date.now() + 360000;
+    const eid       = 'em_' + Date.now();
+    const svcName   = ssData.service.find(x=>x.code===s)?.name || s;
+
+    // remove spinner, add real card on top
+    const old = document.getElementById(tmpId);
+    if (old) old.remove();
+    addEmailCard(eid, email, s, svcName, d, expireAt);
+    startEmailTimer(eid, expireAt);
+
+    // save localStorage
+    const hist = JSON.parse(localStorage.getItem('vn_email_hist') || '[]');
+    hist.push({ id:eid, email, service:svcName, domain:d, time:new Date().toLocaleString(), expireAt });
+    localStorage.setItem('vn_email_hist', JSON.stringify(hist.slice(-50)));
+    toast('Email ready!');
+    // Deduct balance for fresh buy (not "Next" retry)
+    if (!domain && gmailPrice > 0 && currentUser) {
+      const ddr = await fetch('/api/deduct-balance',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({user_id:currentUser.id, amount:gmailPrice})});
+      const ddj = await ddr.json();
+      if (ddj.success) { currentUser.balance=ddj.new_balance; localStorage.setItem('vnUser',JSON.stringify(currentUser)); updBal(); }
+    }
+  } catch(e) {
+    const old = document.getElementById(tmpId);
+    if (old) old.remove();
+    showAlId('gmailAlert', e.message || 'Failed', 'err');
+  } finally {
+    if (!domain) { btn.disabled=false; btn.innerHTML='<i class="fas fa-paper-plane"></i> Get Email'; updateGmailBtn(); }
+  }
+}
+
+function addEmailCard(eid, email, svcCode, svcName, domain, expireAt) {
+  const list = document.getElementById('gmailList');
+  const card = document.createElement('div');
+  card.id = 'ec-' + eid;
+  card.style.cssText = 'background:white;border:1px solid var(--border);border-radius:12px;padding:1rem 1.2rem;margin-bottom:.7rem';
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap;margin-bottom:.6rem">
+      <span style="font-size:1rem;font-weight:800;color:var(--text);font-family:var(--mono);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${email}</span>
+      <button onclick="clip('${email}','Email copied!')" style="padding:.3rem .75rem;background:var(--primary-light);color:var(--primary);border:1px solid #c7d2fe;border-radius:7px;font-size:.76rem;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;white-space:nowrap"><i class="fas fa-copy"></i> Copy</button>
+      <button onclick="buyEmail('${domain}','${svcCode}')" style="padding:.3rem .75rem;background:var(--success);color:white;border:none;border-radius:7px;font-size:.76rem;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;white-space:nowrap"><i class="fas fa-redo"></i> Next</button>
+    </div>
+    <div style="font-size:.78rem;font-weight:600;color:var(--text2);margin-bottom:.7rem"><i class="fas fa-tag"></i> ${svcName} · ${domain} &nbsp;|&nbsp; <i class="fas fa-clock"></i> <span id="et-${eid}" style="font-family:var(--mono);color:var(--primary);font-weight:800">6:00</span></div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.6rem .9rem">
+      <div style="font-size:.7rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.3rem"><i class="fas fa-key"></i> OTP</div>
+      <div style="display:flex;align-items:center;gap:.7rem;flex-wrap:wrap">
+        <span style="font-size:1.2rem;font-weight:800;color:var(--success);font-family:var(--mono);letter-spacing:.1em" id="eo-${eid}">Waiting...</span>
+        <button id="eoc-${eid}" style="display:none;padding:.28rem .7rem;background:#dcfce7;color:var(--success);border:1px solid #bbf7d0;border-radius:7px;font-size:.75rem;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif"><i class="fas fa-copy"></i> Copy OTP</button>
+      </div>
+    </div>`;
+  list.prepend(card);
+}
+
+function startEmailTimer(eid, expireAt) {
+  const iv = setInterval(() => {
+    const rem = Math.max(0, expireAt - Date.now());
+    const el  = document.getElementById('et-' + eid);
+    if (!el) { clearInterval(iv); return; }
+    const m = String(Math.floor(rem/60000)).padStart(1,'0');
+    const s = String(Math.floor((rem%60000)/1000)).padStart(2,'0');
+    el.textContent = m+':'+s;
+    if (rem <= 60000) el.style.color = 'var(--danger)';
+    if (rem <= 0) {
+      clearInterval(iv);
+      const card = document.getElementById('ec-'+eid);
+      if (card) card.remove();
+    }
+  }, 1000);
+}
+
+function emailOtpReceived(eid, otp) {
+  const el = document.getElementById('eo-'+eid);
+  const cb = document.getElementById('eoc-'+eid);
+  if (el) el.textContent = otp;
+  if (cb) { cb.style.display='inline-flex'; cb.setAttribute('onclick',`clip('${otp}','OTP copied!')`); }
+  toast('OTP received: '+otp);
+}
+
+// ════════════════════════════════════════
+//  ACTIVE ITEMS (Quick Actions live view)
+// ════════════════════════════════════════
+const _aiTimers = {};
+function loadActiveItems() {
+  const numHist   = JSON.parse(localStorage.getItem('vn_num_hist')   || '[]');
+  const emailHist = JSON.parse(localStorage.getItem('vn_email_hist') || '[]');
+  const now       = Date.now();
+  const active    = [
+    ...numHist.filter(h   => h.expireAt && h.expireAt > now).map(h => ({ id: h.nid,   val: h.phone, service: h.service, expireAt: h.expireAt, icon:'fa-mobile-alt', color:'var(--primary)' })),
+    ...emailHist.filter(h => h.expireAt && h.expireAt > now).map(h => ({ id: h.id,     val: h.email, service: h.service, expireAt: h.expireAt, icon:'fa-at',         color:'var(--success)' }))
+  ];
+  const section = document.getElementById('activeItemsSection');
+  const list    = document.getElementById('activeItemsList');
+  if (!active.length) { section.style.display='none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = active.map(h => {
+    const rem = Math.max(0, h.expireAt - now);
+    const mm  = String(Math.floor(rem/60000)).padStart(1,'0');
+    const ss  = String(Math.floor((rem%60000)/1000)).padStart(2,'0');
+    return `<div class="ai-row" id="ai-${h.id}">
+      <i class="fas ${h.icon}" style="color:${h.color};font-size:.85rem;flex-shrink:0"></i>
+      <span class="ai-val">${h.val}</span>
+      <span class="ai-svc">${h.service}</span>
+      <span class="ai-timer${rem<60000?' urg':''}" id="ait-${h.id}">${mm}:${ss}</span>
+      <button onmousedown="clip('${h.val}','Copied!')" style="padding:.2rem .6rem;background:var(--primary-light);color:var(--primary);border:1px solid #c7d2fe;border-radius:6px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:'Nunito',sans-serif;flex-shrink:0">Copy</button>
+    </div>`;
+  }).join('');
+  // Start countdown timers
+  Object.values(_aiTimers).forEach(clearInterval);
+  active.forEach(h => {
+    _aiTimers[h.id] = setInterval(() => {
+      const rem = Math.max(0, h.expireAt - Date.now());
+      const el  = document.getElementById('ait-'+h.id);
+      if (!el) { clearInterval(_aiTimers[h.id]); return; }
+      const mm = String(Math.floor(rem/60000)).padStart(1,'0');
+      const ss = String(Math.floor((rem%60000)/1000)).padStart(2,'0');
+      el.textContent = mm+':'+ss;
+      if (rem <= 60000) el.classList.add('urg');
+      if (rem <= 0) {
+        clearInterval(_aiTimers[h.id]);
+        const row = document.getElementById('ai-'+h.id);
+        if (row) row.remove();
+        if (!document.querySelector('.ai-row')) document.getElementById('activeItemsSection').style.display='none';
+      }
+    }, 1000);
+  });
+}
+
+// ─── SUPPORT CHAT ───────────────────────────────────────────────────────────
+let _chatPollIv = null;
+let _chatLastTs  = 0;   // last message timestamp to detect new ones
+
+function openChat() {
+  const box = document.getElementById('chatBox');
+  if (box.style.display !== 'none') return;
+  box.style.display = 'block';
+  box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  loadChatHistory();
+  // Poll every 6 seconds for new admin replies
+  _chatPollIv = setInterval(() => loadChatHistory(true), 6000);
+}
+
+function closeChat() {
+  document.getElementById('chatBox').style.display = 'none';
+  if (_chatPollIv) { clearInterval(_chatPollIv); _chatPollIv = null; }
+}
+
+function _renderChatMsg(msg) {
+  const isUser = msg.sender === 'user';
+  const time   = new Date(msg.time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  return `<div style="display:flex;flex-direction:column;align-items:${isUser?'flex-end':'flex-start'}">
+    <div style="max-width:78%;padding:.55rem .85rem;border-radius:${isUser?'14px 14px 4px 14px':'14px 14px 14px 4px'};
+      background:${isUser?'var(--primary)':'#ffffff'};color:${isUser?'white':'var(--text)'};
+      font-size:.87rem;line-height:1.45;box-shadow:0 1px 4px rgba(0,0,0,.08);word-break:break-word">
+      ${msg.message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+    </div>
+    <span style="font-size:.72rem;color:var(--text2);margin-top:.2rem;padding:0 .2rem">${isUser?'You':'Support'} · ${time}</span>
+  </div>`;
+}
+
+async function loadChatHistory(silent=false) {
+  if (!currentUser) return;
+  try {
+    const r = await fetch('/api/support/inbox', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: currentUser.id })
+    });
+    if (!r.ok) return;
+    const data = await r.json();
+    const msgs = data.messages || [];
+    if (!Array.isArray(msgs) || msgs.length === 0) return;
+
+    const msgsDiv = document.getElementById('chatMsgs');
+    const lastTs  = msgs[msgs.length-1].time;
+
+    if (!silent || lastTs !== _chatLastTs) {
+      _chatLastTs = lastTs;
+      msgsDiv.innerHTML = msgs.map(_renderChatMsg).join('');
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+    }
+  } catch(_) {}
+}
+
+async function sendChat() {
+  if (!currentUser) { showToast('Please login first','warn'); return; }
+  const inp = document.getElementById('chatInp');
+  const msg = (inp.value || '').trim();
+  if (!msg) return;
+  inp.value = '';
+  inp.disabled = true;
+
+  // Optimistically append
+  const msgsDiv = document.getElementById('chatMsgs');
+  const placeholder = document.querySelector('#chatMsgs > div[style*="Send a message"]');
+  if (placeholder) placeholder.remove();
+  msgsDiv.insertAdjacentHTML('beforeend', _renderChatMsg({
+    sender:'user', message: msg,
+    time: new Date().toISOString()
+  }));
+  msgsDiv.scrollTop = msgsDiv.scrollHeight;
+
+  try {
+    const r = await fetch('/api/support/send', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: currentUser.id, message: msg })
+    });
+    if (!r.ok) throw new Error('failed');
+    // Refresh to get server-confirmed message with proper timestamp
+    await loadChatHistory();
+  } catch(_) {
+    showToast('Failed to send message','danger');
+  } finally {
+    inp.disabled = false;
+    inp.focus();
+  }
+}
 </script>
 </body>
 </html>
