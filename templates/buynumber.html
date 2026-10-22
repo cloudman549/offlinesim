@@ -107,7 +107,8 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 .scard{background:white;border:2px solid var(--border);border-radius:12px;padding:.9rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:.7rem}
 .scard:hover{border-color:var(--primary);transform:translateY(-1px);box-shadow:0 4px 14px rgba(67,97,238,.1)}
 .scard.sel{border-color:var(--primary);background:var(--primary-light)}
-.scard .sico{width:36px;height:36px;border-radius:9px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.scard .sico{width:36px;height:36px;border-radius:9px;background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;overflow:hidden}
+.scard .sico img{width:22px;height:22px;object-fit:contain;border-radius:3px}
 .scard .sname{font-size:.82rem;font-weight:700;color:var(--text);line-height:1.3}
 
 /* ─── BUY BAR ─── */
@@ -237,7 +238,7 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
     <div class="not-auth" id="notAuth" style="display:none">
       <i class="fas fa-lock"></i>
       <h2>Login Required</h2>
-      <p>Virtual numbers buy karne ke liye pehle login karo.</p>
+      <p>Please login to buy virtual numbers.</p>
       <a href="/virtual-number"><i class="fas fa-sign-in-alt"></i> Go to Login</a>
     </div>
 
@@ -320,7 +321,14 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-
 <div id="toast"></div>
 
 <script>
-const SKEY  = 'a362879eb1515c86208a58f8557c9a7a3ab0';
+const SKEY = '9f15743ed56779bfb281ec85a3d2ab27';
+
+// Operator URLs — loaded from admin config
+let FLASK_URL = '';   // Operator 1 (GrizzlySMS / RailOne Flask)
+let OP2_URL   = '';   // Operator 2 (HubSpot OTP Server Cloudflare URL)
+
+const INDIA_ID       = '18';
+const FLASK_SERVICES = ['swr','swl','swrail','raione'];
 
 let currentUser   = null;
 let allCountries  = [];
@@ -329,17 +337,41 @@ let selCountry    = null;
 let selOperator   = null;
 let selService    = null;
 let servicePrices = [];
+let grizzlyPrices = {};
+let defaultMarkup = 5;
+let smsApiKey     = '';
 let showAllC      = false;
 let activeCount   = 0;
 
-// Server-side proxy — no CORS issues
+// Active polls tracker — {nid: intervalId}
+const _activePolls = {};
+
+function useFlaskApi() {
+  if (!selCountry || !selService) return false;
+  const isIndia    = selCountry.id === INDIA_ID;
+  const isSvcMatch = FLASK_SERVICES.some(c =>
+    selService.code.toLowerCase().includes(c) ||
+    selService.name.toLowerCase().includes('rail') ||
+    selService.name.toLowerCase().includes('raione')
+  );
+  return isIndia && (selOperator === 1) && isSvcMatch;
+}
+
 async function smsApi(params) {
   const r = await fetch('/api/sms-proxy?' + params);
   if (!r.ok) throw new Error('API error: ' + r.status);
   return r;
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json());
+    FLASK_URL     = (cfg.op1_url        || '').replace(/\/$/, '');
+    OP2_URL       = (cfg.op2_url        || '').replace(/\/$/, '');
+    defaultMarkup = cfg.default_markup != null ? cfg.default_markup : 5;
+    smsApiKey     = cfg.sms_api_key    || '';
+  } catch(_) {}
+
   const u = localStorage.getItem('vnUser');
   if (!u) {
     document.getElementById('buyUI').style.display   = 'none';
@@ -360,13 +392,20 @@ function updBal() {
   document.getElementById('tbBal').textContent = b;
 }
 
+function setAlert(msg, type) {
+  const el = document.getElementById('buyAlert');
+  el.textContent = msg;
+  el.className = 'alert-row on ' + (type || 'err');
+  setTimeout(() => el.classList.remove('on'), 4000);
+}
+
 function toggleSb() {
   document.getElementById('sidebar').classList.toggle('mob-open');
   document.getElementById('mobOverlay').classList.toggle('on');
 }
 
 function doLogout() {
-  if (!confirm('Logout karna chahte ho?')) return;
+  if (!confirm('Are you sure you want to logout?')) return;
   localStorage.removeItem('vnUser');
   window.location.href = '/virtual-number';
 }
@@ -378,27 +417,82 @@ async function loadServicePrices() {
     if (d.success) servicePrices = d.prices;
   } catch(e) {}
 }
+
 function getPrice(code) {
   const p = servicePrices.find(p =>
     p.service_code === code &&
-    (!selCountry || p.country_id === selCountry.id) &&
+    (!selCountry  || p.country_id === selCountry.id) &&
     (!selOperator || p.operator == selOperator)
   );
-  return p ? `₹${p.price}` : null;
+  if (p) return '₹' + p.price;
+  if (grizzlyPrices[code] != null) {
+    return '₹' + parseFloat((grizzlyPrices[code] + defaultMarkup).toFixed(2));
+  }
+  return null;
 }
 
-// Step nav
+function getPriceNum(code) {
+  const s = getPrice(code);
+  if (!s) return 0;
+  return parseFloat(s.replace('₹','')) || 0;
+}
+
+const _deducted = {};
+
+async function deductForNumber(nid, amount) {
+  if (!currentUser || amount <= 0 || _deducted[nid]) return;
+  try {
+    const r = await fetch('/api/deduct-balance', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: currentUser.id, amount})
+    });
+    const d = await r.json();
+    if (d.success) {
+      _deducted[nid] = amount;
+      currentUser.balance = d.new_balance;
+      localStorage.setItem('vnUser', JSON.stringify(currentUser));
+      updBal();
+    } else {
+      setAlert('Balance deduction failed: ' + d.error, 'err');
+    }
+  } catch(_) {}
+}
+
+async function refundForNumber(nid) {
+  const amount = _deducted[nid];
+  if (!currentUser || !amount) return;
+  try {
+    const r = await fetch('/api/refund-balance', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({user_id: currentUser.id, amount})
+    });
+    const d = await r.json();
+    if (d.success) {
+      delete _deducted[nid];
+      currentUser.balance = d.new_balance;
+      localStorage.setItem('vnUser', JSON.stringify(currentUser));
+      updBal();
+      setAlert('₹' + amount + ' refunded — no OTP received.', 'ok');
+    }
+  } catch(_) {}
+}
+
+// ── STEP NAV ─────────────────────────────────────────────────────────────────
 function resetToCountry() {
   selCountry = null; selOperator = null; selService = null;
   show('stepCountry'); hide('stepOperator'); hide('stepService'); hide('activeSection');
   document.getElementById('buyBar').classList.remove('on');
 }
+
 function resetToOperator() {
   selOperator = null; selService = null;
   show('stepOperator'); hide('stepService');
   document.getElementById('buyBar').classList.remove('on');
   document.querySelectorAll('.op-card').forEach(c => c.classList.remove('sel'));
 }
+
 function goBackToSelect() {
   hide('activeSection');
   document.getElementById('activeNumbers').innerHTML = '';
@@ -407,235 +501,523 @@ function goBackToSelect() {
   resetToCountry();
 }
 
-// Countries
+// ── COUNTRIES ────────────────────────────────────────────────────────────────
 async function loadCountries() {
   try {
-    const r = await smsApi(`api_key=${SKEY}&action=getCountries&operator=1`);
+    const r = await smsApi('api_key=' + SKEY + '&action=getCountries&operator=1');
     const d = await r.json();
-    allCountries = Object.entries(d).map(([id,name])=>({id,name})).sort((a,b)=>a.name.localeCompare(b.name));
+    allCountries = Object.entries(d).map(([id, name]) => ({id, name})).sort((a,b) => a.name.localeCompare(b.name));
     renderCountries();
   } catch(e) {
-    document.getElementById('countryGrid').innerHTML = `<div style="color:var(--danger);font-size:.85rem;padding:.5rem;grid-column:1/-1"><i class="fas fa-exclamation-circle"></i> Failed. <button onclick="loadCountries()" style="border:none;background:none;color:var(--primary);font-weight:700;cursor:pointer">Retry</button></div>`;
+    document.getElementById('countryGrid').innerHTML = '<div style="color:var(--danger);font-size:.85rem;padding:.5rem;grid-column:1/-1"><i class="fas fa-exclamation-circle"></i> Failed. <button onclick="loadCountries()" style="border:none;background:none;color:var(--primary);font-weight:700;cursor:pointer">Retry</button></div>';
   }
 }
+
 function renderCountries() {
-  const q    = (document.getElementById('cSearch').value||'').toLowerCase();
-  const list = allCountries.filter(c=>c.name.toLowerCase().includes(q));
-  const shown = (!showAllC&&!q) ? list.slice(0,16) : list;
-  document.getElementById('countryGrid').innerHTML = shown.map(c=>`
-    <div class="ccard ${selCountry&&selCountry.id===c.id?'sel':''}" onclick="pickCountry('${c.id}','${esc(c.name)}')">
-      <span class="flag">${cflag(c.id)}</span>
-      <div class="cname">${c.name}</div>
-      <div class="cstat">Available</div>
-    </div>`).join('');
-  document.getElementById('viewMoreBtn').style.display = (!q&&!showAllC&&allCountries.length>16)?'flex':'none';
-}
-function filterCountries()    { renderCountries(); }
-function toggleAllCountries() { showAllC=true; renderCountries(); }
-function pickCountry(id,name) {
-  selCountry={id,name};
-  hide('stepCountry'); show('stepOperator');
-  document.getElementById('selCtryBadge').innerHTML=`${cflag(id)} <span style="color:var(--primary)">${name}</span> selected`;
-  document.querySelectorAll('.op-card').forEach(c=>c.classList.remove('sel'));
+  const q    = (document.getElementById('cSearch').value || '').toLowerCase();
+  const list = allCountries.filter(c => c.name.toLowerCase().includes(q));
+  const shown = (!showAllC && !q) ? list.slice(0, 16) : list;
+  document.getElementById('countryGrid').innerHTML = shown.map(c =>
+    '<div class="ccard ' + (selCountry && selCountry.id === c.id ? 'sel' : '') + '" onclick="pickCountry(\'' + c.id + '\',\'' + esc(c.name) + '\')">' +
+    '<span class="flag">' + cflag(c.id) + '</span>' +
+    '<div class="cname">' + c.name + '</div>' +
+    '<div class="cstat">Available</div>' +
+    '</div>'
+  ).join('');
+  document.getElementById('viewMoreBtn').style.display = (!q && !showAllC && allCountries.length > 16) ? 'flex' : 'none';
 }
 
-// Operator
+function filterCountries()    { renderCountries(); }
+function toggleAllCountries() { showAllC = true; renderCountries(); }
+
+function pickCountry(id, name) {
+  selCountry = {id, name};
+  hide('stepCountry'); show('stepOperator');
+  document.getElementById('selCtryBadge').innerHTML = cflag(id) + ' <span style="color:var(--primary)">' + name + '</span> selected';
+  document.querySelectorAll('.op-card').forEach(c => c.classList.remove('sel'));
+}
+
+// ── OPERATOR ─────────────────────────────────────────────────────────────────
 async function selectOperator(op) {
-  selOperator=op;
-  document.querySelectorAll('.op-card').forEach(c=>c.classList.remove('sel'));
-  document.getElementById('opCard'+op).classList.add('sel');
+  selOperator = op;
+  document.querySelectorAll('.op-card').forEach(c => c.classList.remove('sel'));
+  document.getElementById('opCard' + op).classList.add('sel');
   hide('stepOperator'); show('stepService');
-  document.getElementById('selOpBadge').innerHTML=`${cflag(selCountry.id)} <span style="color:var(--primary)">${selCountry.name}</span> · <span style="color:var(--text)">Operator ${op}${op===2?' <span class="premium-tag">PREMIUM</span>':''}</span>`;
+  document.getElementById('selOpBadge').innerHTML =
+    cflag(selCountry.id) + ' <span style="color:var(--primary)">' + selCountry.name + '</span> · ' +
+    '<span style="color:var(--text)">Operator ' + op + (op === 2 ? ' <span class="premium-tag">PREMIUM</span>' : '') + '</span>';
   await loadServices(op);
 }
 
-// Services
+// ── SERVICES ──────────────────────────────────────────────────────────────────
 async function loadServices(op) {
-  document.getElementById('svcGrid').innerHTML='<div style="display:contents"><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div></div>';
+  document.getElementById('svcGrid').innerHTML = '<div style="display:contents"><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div><div class="skel" style="height:60px"></div></div>';
+  grizzlyPrices = {};
   try {
-    const r=await smsApi(`api_key=${SKEY}&action=getServices&operator=${op||1}`);
-    const d=await r.json();
-    allServices=Object.entries(d).map(([code,name])=>({code,name:typeof name==='string'?name:(name.name||code)})).sort((a,b)=>a.name.localeCompare(b.name));
+    const r = await smsApi('api_key=' + SKEY + '&action=getServicesList&operator=1');
+    const d = await r.json();
+    allServices = Object.entries(d).map(([code, name]) => ({
+      code,
+      name: typeof name === 'string' ? name : (name.name || code)
+    })).sort((a,b) => a.name.localeCompare(b.name));
     renderServices();
+    if (selCountry) fetchGrizzlyPricesForCountry(selCountry.id);
   } catch(e) {
-    document.getElementById('svcGrid').innerHTML=`<div style="color:var(--danger);font-size:.85rem;padding:.5rem;grid-column:1/-1"><i class="fas fa-exclamation-circle"></i> Failed to load services</div>`;
+    document.getElementById('svcGrid').innerHTML = '<div style="color:var(--danger);font-size:.85rem;padding:.5rem;grid-column:1/-1"><i class="fas fa-exclamation-circle"></i> Failed. <button onclick="loadServices(' + op + ')" style="border:none;background:none;color:var(--primary);font-weight:700;cursor:pointer">Retry</button></div>';
   }
 }
-function renderServices() {
-  const q=( document.getElementById('sSearch').value||'').toLowerCase();
-  const list=allServices.filter(s=>s.name.toLowerCase().includes(q));
-  document.getElementById('svcGrid').innerHTML=list.map(s=>{
-    const price=getPrice(s.code);
-    return `<div class="scard ${selService&&selService.code===s.code?'sel':''}" onclick="pickService('${s.code}','${esc(s.name)}')">
-      <div class="sico">${sicon(s.code)}</div>
-      <div style="flex:1"><div class="sname">${s.name}</div></div>
-      ${price?`<div style="font-size:.78rem;font-weight:800;color:var(--primary);white-space:nowrap">${price}</div>`:''}
-    </div>`;
-  }).join('');
-}
-function filterServices() { renderServices(); }
-function pickService(code,name) {
-  selService={code,name};
-  renderServices();
-  document.getElementById('buyBar').classList.add('on');
-  document.getElementById('buySelInfo').innerHTML=`
-    <div class="bsi-pill">${cflag(selCountry.id)} ${selCountry.name}</div>
-    <div class="bsi-pill">Op ${selOperator}</div>
-    <div class="bsi-pill">${sicon(code)} ${name}</div>`;
-  document.getElementById('buyNowBtn').disabled=false;
+
+async function fetchGrizzlyPricesForCountry(countryId) {
+  try {
+    const r = await fetch('/api/sms-proxy?action=getPrices&country=' + countryId + '&api_key=' + encodeURIComponent(SKEY));
+    const d = await r.json();
+    grizzlyPrices = {};
+    const services = d[String(countryId)] || d[countryId] || null;
+    if (!services || typeof services !== 'object') { renderServices(); return; }
+    for (const [svcCode, info] of Object.entries(services)) {
+      const cost = parseFloat(info?.cost ?? NaN);
+      if (!isNaN(cost) && cost > 0) {
+        grizzlyPrices[svcCode] = parseFloat((cost * 85).toFixed(2));
+      }
+    }
+    renderServices();
+  } catch(e) {}
 }
 
-// Buy Number
+function renderServices() {
+  const q    = (document.getElementById('sSearch').value || '').toLowerCase();
+  const list = allServices.filter(s => s.name.toLowerCase().includes(q));
+  document.getElementById('svcGrid').innerHTML = list.map(s => {
+    const price = getPrice(s.code);
+    return '<div class="scard ' + (selService && selService.code === s.code ? 'sel' : '') + '" onclick="pickService(\'' + s.code + '\',\'' + esc(s.name) + '\')">' +
+      '<div class="sico">' + sicon(s.code) + '</div>' +
+      '<div style="flex:1"><div class="sname">' + s.name + '</div></div>' +
+      (price ? '<div style="font-size:.78rem;font-weight:800;color:var(--primary);white-space:nowrap">' + price + '</div>' : '') +
+      '</div>';
+  }).join('');
+}
+
+function filterServices() { renderServices(); }
+
+function pickService(code, name) {
+  selService = {code, name};
+  renderServices();
+  document.getElementById('buyBar').classList.add('on');
+  document.getElementById('buySelInfo').innerHTML =
+    '<div class="bsi-pill">' + cflag(selCountry.id) + ' ' + selCountry.name + '</div>' +
+    '<div class="bsi-pill">Op ' + selOperator + '</div>' +
+    '<div class="bsi-pill">' + sicon(code) + ' ' + name + '</div>';
+  document.getElementById('buyNowBtn').disabled = false;
+}
+
+// ── BUY NUMBER ────────────────────────────────────────────────────────────────
 async function buyNumber() {
-  if (!selCountry||!selService||!selOperator) return;
-  const btn=document.getElementById('buyNowBtn');
-  btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i> Buying...';
+  if (!selCountry || !selService || !selOperator) return;
+
+  const price = getPriceNum(selService.code);
+  if (price > 0 && currentUser) {
+    const bal = parseFloat(currentUser.balance || 0);
+    if (bal < price) {
+      setAlert('Insufficient balance. Required ₹' + price + ', available ₹' + bal.toFixed(2) + '. Please recharge.', 'err');
+      return;
+    }
+  }
+
+  const btn = document.getElementById('buyNowBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<i class="fas fa-circle-notch spin"></i> Buying...';
   hide('stepService'); hide('stepCountry'); hide('stepOperator');
   show('activeSection');
   document.getElementById('buyBar').classList.remove('on');
-  const tmpId='tmp_'+Date.now();
+
+  const tmpId = 'tmp_' + Date.now();
   addSpinnerRow(tmpId);
+
   try {
-    const r=await smsApi(`api_key=${SKEY}&action=getNumber&service=${selService.code}&country=${selCountry.id}&operator=${selOperator}`);
-    const txt=await r.text();
-    if (txt.startsWith('ACCESS_NUMBER:')) {
-      const parts=txt.split(':');
-      replaceSpinner(tmpId,parts[1],parts[2]);
-      startOtpPoll(parts[1]);
-    } else throw new Error(txt);
-  } catch(e) {
-    const nid='demo_'+Date.now();
-    const phone='+91'+Math.floor(9000000000+Math.random()*999999999);
-    replaceSpinner(tmpId,nid,phone);
-    setTimeout(()=>updateOTP(nid,String(Math.floor(100000+Math.random()*900000))),8000);
+    if (selOperator === 1) {
+      if (!FLASK_URL) {
+        removeSpinner(tmpId);
+        setAlert('Operator 1 URL not configured. Set it in Admin Panel.', 'err');
+        return;
+      }
+      await buyViaFlask(tmpId);
+    } else {
+      if (!OP2_URL) {
+        removeSpinner(tmpId);
+        setAlert('Operator 2 URL not configured. Set it in Admin Panel.', 'err');
+        return;
+      }
+      await buyViaOp2(tmpId);
+    }
   } finally {
-    btn.disabled=false; btn.innerHTML='<i class="fas fa-shopping-cart"></i> Buy Number';
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-shopping-cart"></i> Buy Number';
   }
 }
 
-function addSpinnerRow(tmpId) {
-  const cnt=document.getElementById('activeNumbers');
-  const card=document.createElement('div');
-  card.className='spin-card'; card.id='nc-'+tmpId;
-  card.innerHTML=`<i class="fas fa-circle-notch spin" style="font-size:1.4rem;color:var(--primary);flex-shrink:0"></i>
-    <div><div style="font-weight:700;font-size:.9rem">Getting number...</div>
-    <div style="font-size:.76rem;color:var(--text2);margin-top:.15rem">${selService.name} · ${selCountry.name} · Op ${selOperator}</div></div>`;
-  cnt.prepend(card); // add at top
-}
-
-function replaceSpinner(tmpId,nid,phone) {
-  activeCount++;
-  document.getElementById('anCount').textContent=activeCount;
-
-  // Save to localStorage history
-  const hist=JSON.parse(localStorage.getItem('vn_num_hist')||'[]');
-  hist.push({nid,phone,country:selCountry.name,countryId:selCountry.id,service:selService.name,time:new Date().toLocaleString(),otp:null});
-  localStorage.setItem('vn_num_hist',JSON.stringify(hist.slice(-100)));
-
-  // Remove spinner
-  const old=document.getElementById('nc-'+tmpId);
-  if (old) old.remove();
-
-  // Add real card (does NOT clear existing cards — new row added on top)
-  const cnt=document.getElementById('activeNumbers');
-  const card=document.createElement('div');
-  card.className='num-card'; card.id='nc-'+nid;
-  card.innerHTML=`
-    <div class="nc-flag">${cflag(selCountry.id)}</div>
-    <div class="nc-info">
-      <div class="nc-phone">${phone}</div>
-      <div class="nc-meta">${selService.name} · ${selCountry.name} · Op ${selOperator}</div>
-      <div class="nc-actions">
-        <button class="nc-copy-btn" onclick="clip('${phone}','Number copied!')"><i class="fas fa-copy"></i> Copy</button>
-        <button class="nc-next-btn" id="nextBtn-${nid}" onclick="buyNextNumber('${nid}')"><i class="fas fa-redo"></i> Next</button>
-        <span class="nc-timer" id="timer-${nid}">6:00</span>
-      </div>
-      <div class="nc-otp-section" id="no-${nid}">
-        <div class="nc-otp-label"><i class="fas fa-key"></i> OTP Received</div>
-        <div class="nc-otp-row">
-          <div class="nc-otp-val" id="noval-${nid}">—</div>
-          <button class="nc-copy-btn" id="copyOtp-${nid}" style="display:none" onclick="clip('','OTP copied!')"><i class="fas fa-copy"></i> Copy OTP</button>
-        </div>
-      </div>
-    </div>
-    <div class="nc-badge badge-wait" id="nb-${nid}"><i class="fas fa-clock"></i> Waiting</div>`;
-  cnt.prepend(card); // newest on top
-  startTimer(nid,Date.now()+6*60*1000);
-}
-
-// Next — adds NEW row, existing rows stay intact
-async function buyNextNumber(fromNid) {
-  const btn=document.getElementById('nextBtn-'+fromNid);
-  if (btn) { btn.disabled=true; btn.innerHTML='<i class="fas fa-circle-notch spin"></i>'; }
-  const tmpId='tmp_'+Date.now();
-  addSpinnerRow(tmpId);
+// ── OPERATOR 1 (GrizzlySMS / Flask) ─────────────────────────────────────────
+async function buyViaFlask(tmpId) {
   try {
-    const r=await smsApi(`api_key=${SKEY}&action=getNumber&service=${selService.code}&country=${selCountry.id}&operator=${selOperator}`);
-    const txt=await r.text();
-    if (txt.startsWith('ACCESS_NUMBER:')) {
-      const parts=txt.split(':');
-      replaceSpinner(tmpId,parts[1],parts[2]);
-      startOtpPoll(parts[1]);
-    } else throw new Error(txt);
+    const url = FLASK_URL + '/buy_number?service=' + encodeURIComponent(selService.code) + '&country=' + encodeURIComponent(selCountry.id);
+    const r   = await fetch(url);
+    const d   = await r.json();
+    // Flask returns {status, order_id, number} — check for error field
+    if (d.error) throw new Error(d.message || d.error || 'Number buy failed');
+    const nid = d.order_id;
+    replaceSpinner(tmpId, nid, d.number);
+    startFlaskOtpPoll(nid, d.order_id);
   } catch(e) {
-    const nid='demo_'+Date.now();
-    const phone='+91'+Math.floor(9000000000+Math.random()*999999999);
-    replaceSpinner(tmpId,nid,phone);
-    setTimeout(()=>updateOTP(nid,String(Math.floor(100000+Math.random()*900000))),8000);
-  } finally {
-    if (btn) { btn.disabled=false; btn.innerHTML='<i class="fas fa-redo"></i> Next'; }
+    removeSpinner(tmpId);
+    setAlert(e.message || 'Failed to buy number', 'err');
   }
 }
 
-function startTimer(nid,endTime) {
-  const iv=setInterval(()=>{
-    const rem=Math.max(0,endTime-Date.now());
-    const m=String(Math.floor(rem/60000)).padStart(1,'0');
-    const s=String(Math.floor((rem%60000)/1000)).padStart(2,'0');
-    const el=document.getElementById('timer-'+nid);
-    if (!el) { clearInterval(iv); return; }
-    el.textContent=m+':'+s;
-    if (rem<=60000) el.classList.add('urg');
-    if (rem<=0) clearInterval(iv);
-  },1000);
-}
-
-async function startOtpPoll(nid) {
-  const iv=setInterval(async()=>{
+// Flask OTP poll — uses /get_otp?order_id=
+function startFlaskOtpPoll(nid, orderId) {
+  if (_activePolls[nid]) clearInterval(_activePolls[nid]);
+  const start = Date.now();
+  _activePolls[nid] = setInterval(async () => {
+    if (Date.now() - start > 370000) {
+      clearInterval(_activePolls[nid]);
+      delete _activePolls[nid];
+      return;
+    }
     try {
-      const r=await smsApi(`api_key=${SKEY}&action=getStatus&id=${nid}`);
-      const txt=await r.text();
-      if (txt.startsWith('STATUS_OK:')) { updateOTP(nid,txt.split(':')[1]); clearInterval(iv); }
-      else if (txt==='STATUS_CANCEL') clearInterval(iv);
-    } catch(_){}
-  },5000);
+      const r = await fetch(FLASK_URL + '/get_otp?order_id=' + encodeURIComponent(orderId));
+      const d = await r.json();
+      if (d.status === 'success') {
+        updateOTP(nid, d.otp);
+        clearInterval(_activePolls[nid]);
+        delete _activePolls[nid];
+      } else if (d.status === 'timeout') {
+        clearInterval(_activePolls[nid]);
+        delete _activePolls[nid];
+        if (_deducted[nid]) refundForNumber(nid);
+      }
+    } catch(_) {}
+  }, 5000);
 }
 
-function updateOTP(nid,otp) {
-  const hist=JSON.parse(localStorage.getItem('vn_num_hist')||'[]');
-  const h=hist.find(p=>p.nid===nid);
-  if (h) { h.otp=otp; localStorage.setItem('vn_num_hist',JSON.stringify(hist)); }
-  const nb=document.getElementById('nb-'+nid);
-  if (nb) { nb.innerHTML='<i class="fas fa-check-circle"></i> OTP'; nb.className='nc-badge badge-ok'; }
-  const ns=document.getElementById('no-'+nid);
+// ── OPERATOR 2 (HubSpot OTP Server via Cloudflare) ───────────────────────────
+// GrizzlySMS code → HubSpot service name mapping
+const OP2_SVC = {
+  wa:'whatsapp',  fb:'facebook',   ig:'instagram',  go:'google',     tw:'twitter',
+  tg:'telegram',  am:'amazon',     pa:'paytm',      ub:'uber',       li:'linkedin',
+  mm:'microsoft', yt:'youtube',    tk:'tiktok',     sp:'spotify',    sk:'snapchat',
+  pp:'paypal',    vi:'viber',      wc:'wechat',     nf:'netflix',    ok:'odnoklassniki',
+  vk:'vkontakte', ipe:'phonepe',   pe:'phonepe',    jio:'jio',       air:'airtel',
+  ol:'ola',       sw:'swiggy',     zo:'zomato',     ap:'apple',
+  fl:'flipkart',  fkd:'flipkart',  fli:'flipkart',
+  swr:'railone',  swl:'railone',   swrail:'railone', raione:'railone'
+};
+
+function op2SvcName(code) {
+  return OP2_SVC[code] || OP2_SVC[code.toLowerCase()] || selService.name.toLowerCase().replace(/\s+/g,'');
+}
+
+async function buyViaOp2(tmpId, reuseOrderId) {
+  // Operator 2 only supports India
+  if (!selCountry || selCountry.name !== 'India') {
+    removeSpinner(tmpId);
+    setAlert('Operator 2 sirf India numbers deta hai.', 'err');
+    return;
+  }
+  try {
+    const svcName = op2SvcName(selService.code);
+    let url = OP2_URL + '/buy_number?service=' + encodeURIComponent(svcName) + '&country=IN';
+    if (reuseOrderId) url += '&order_id=' + encodeURIComponent(reuseOrderId);
+
+    const r = await fetch(url);
+    const d = await r.json();
+
+    if (d.error) throw new Error(d.message || d.error || 'Number nahi mila');
+    if (!d.order_id || !d.number) throw new Error('Invalid response from server');
+
+    replaceSpinner(tmpId, d.order_id, d.number);
+    startOp2OtpPoll(d.order_id);
+  } catch(e) {
+    removeSpinner(tmpId);
+    setAlert(e.message || 'Number nahi mila — server se connect nahi ho pa raha', 'err');
+  }
+}
+
+// Operator 2 OTP poll — /get_otp?order_id=
+function startOp2OtpPoll(orderId) {
+  if (_activePolls[orderId]) clearInterval(_activePolls[orderId]);
+  const start = Date.now();
+  _activePolls[orderId] = setInterval(async () => {
+    if (Date.now() - start > 370000) {
+      clearInterval(_activePolls[orderId]);
+      delete _activePolls[orderId];
+      return;
+    }
+    try {
+      const r = await fetch(OP2_URL + '/get_otp?order_id=' + encodeURIComponent(orderId));
+      const d = await r.json();
+      if (d.status === 'success') {
+        updateOTP(orderId, d.otp);
+        clearInterval(_activePolls[orderId]);
+        delete _activePolls[orderId];
+      } else if (d.status === 'timeout') {
+        clearInterval(_activePolls[orderId]);
+        delete _activePolls[orderId];
+        if (_deducted[orderId]) refundForNumber(orderId);
+      }
+    } catch(_) {}
+  }, 5000);
+}
+
+// ── NEXT BUTTON ───────────────────────────────────────────────────────────────
+async function buyNextNumber(fromNid) {
+  const btn = document.getElementById('nextBtn-' + fromNid);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch spin"></i>'; }
+
+  const tmpId = 'tmp_' + Date.now();
+  addSpinnerRow(tmpId);
+
+  try {
+    if (selOperator === 1) {
+      await buyViaFlask(tmpId);
+    } else {
+      // Op2: reuse same order_id to get new number
+      await buyViaOp2(tmpId, fromNid);
+    }
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-redo"></i> Next'; }
+  }
+}
+
+// ── CARD HELPERS ──────────────────────────────────────────────────────────────
+function addSpinnerRow(tmpId) {
+  const cnt  = document.getElementById('activeNumbers');
+  const card = document.createElement('div');
+  card.className = 'spin-card';
+  card.id        = 'nc-' + tmpId;
+  card.innerHTML =
+    '<i class="fas fa-circle-notch spin" style="font-size:1.4rem;color:var(--primary);flex-shrink:0"></i>' +
+    '<div><div style="font-weight:700;font-size:.9rem">Getting number...</div>' +
+    '<div style="font-size:.76rem;color:var(--text2);margin-top:.15rem">' + selService.name + ' · ' + selCountry.name + ' · Op ' + selOperator + '</div></div>';
+  cnt.prepend(card);
+}
+
+function removeSpinner(tmpId) {
+  const el = document.getElementById('nc-' + tmpId);
+  if (el) el.remove();
+}
+
+function replaceSpinner(tmpId, nid, phone) {
+  activeCount++;
+  document.getElementById('anCount').textContent = activeCount;
+
+  const hist = JSON.parse(localStorage.getItem('vn_num_hist') || '[]');
+  hist.push({
+    nid, phone,
+    country:   selCountry.name,
+    countryId: selCountry.id,
+    service:   selService.name,
+    time:      new Date().toLocaleString(),
+    otp:       null,
+    expireAt:  Date.now() + 360000
+  });
+  localStorage.setItem('vn_num_hist', JSON.stringify(hist.slice(-100)));
+
+  removeSpinner(tmpId);
+
+  const price = getPriceNum(selService.code);
+  if (price > 0) deductForNumber(nid, price);
+
+  const cnt  = document.getElementById('activeNumbers');
+  const card = document.createElement('div');
+  card.className = 'num-card';
+  card.id        = 'nc-' + nid;
+
+  const fmt = fmtPhone(phone, selCountry.name);
+  card.innerHTML =
+    '<div class="nc-flag">' + cflag(selCountry.id) + '</div>' +
+    '<div class="nc-info">' +
+      '<div class="nc-phone">' + fmt.display + '</div>' +
+      '<div class="nc-meta">' + selService.name + ' · ' + selCountry.name + ' · Op ' + selOperator + '</div>' +
+      '<div class="nc-actions">' +
+        '<button class="nc-copy-btn" onclick="clip(\'' + esc(fmt.copy) + '\',\'Number copied!\')"><i class="fas fa-copy"></i> Copy</button>' +
+        '<button class="nc-next-btn" id="nextBtn-' + nid + '" onclick="buyNextNumber(\'' + nid + '\')"><i class="fas fa-redo"></i> Next</button>' +
+        '<span class="nc-timer" id="timer-' + nid + '">6:00</span>' +
+      '</div>' +
+      '<div class="nc-otp-section" id="no-' + nid + '">' +
+        '<div class="nc-otp-label"><i class="fas fa-key"></i> OTP Received</div>' +
+        '<div class="nc-otp-row">' +
+          '<div class="nc-otp-val" id="noval-' + nid + '">—</div>' +
+          '<button class="nc-copy-btn" id="copyOtp-' + nid + '" style="display:none"><i class="fas fa-copy"></i> Copy OTP</button>' +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="nc-badge badge-wait" id="nb-' + nid + '"><i class="fas fa-clock"></i> Waiting</div>';
+
+  cnt.prepend(card);
+  startTimer(nid, Date.now() + 6 * 60 * 1000);
+}
+
+function startTimer(nid, endTime) {
+  const iv = setInterval(() => {
+    const rem = Math.max(0, endTime - Date.now());
+    const m   = String(Math.floor(rem / 60000)).padStart(1, '0');
+    const s   = String(Math.floor((rem % 60000) / 1000)).padStart(2, '0');
+    const el  = document.getElementById('timer-' + nid);
+    if (!el) { clearInterval(iv); return; }
+    el.textContent = m + ':' + s;
+    if (rem <= 60000) el.classList.add('urg');
+    if (rem <= 0) {
+      clearInterval(iv);
+      if (_deducted[nid]) refundForNumber(nid);
+    }
+  }, 1000);
+}
+
+function updateOTP(nid, otp) {
+  const hist = JSON.parse(localStorage.getItem('vn_num_hist') || '[]');
+  const h    = hist.find(p => p.nid === nid);
+  if (h) { h.otp = otp; localStorage.setItem('vn_num_hist', JSON.stringify(hist)); }
+
+  const nb = document.getElementById('nb-' + nid);
+  if (nb) { nb.innerHTML = '<i class="fas fa-check-circle"></i> OTP'; nb.className = 'nc-badge badge-ok'; }
+
+  const ns = document.getElementById('no-' + nid);
   if (ns) ns.classList.add('show');
-  const nv=document.getElementById('noval-'+nid);
-  if (nv) nv.textContent=otp;
-  const cb=document.getElementById('copyOtp-'+nid);
-  if (cb) { cb.style.display='inline-flex'; cb.setAttribute('onclick',`clip('${otp}','OTP copied!')`); }
-  toast('OTP received: '+otp);
+
+  const nv = document.getElementById('noval-' + nid);
+  if (nv) nv.textContent = otp;
+
+  const cb = document.getElementById('copyOtp-' + nid);
+  if (cb) {
+    cb.style.display = 'inline-flex';
+    cb.setAttribute('onclick', 'clip(\'' + otp + '\',\'OTP copied!\')');
+  }
+  toast('OTP received: ' + otp);
 }
 
-// Helpers
-function show(id){document.getElementById(id).style.display='block';}
-function hide(id){document.getElementById(id).style.display='none';}
-function clip(t,msg){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast(msg)).catch(()=>fbclip(t,msg));}else fbclip(t,msg);}
-function fbclip(t,msg){const ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;left:-9999px';document.body.appendChild(ta);ta.select();try{document.execCommand('copy');toast(msg);}catch(_){toast('Copy failed','err');}document.body.removeChild(ta);}
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+function show(id) { document.getElementById(id).style.display = 'block'; }
+function hide(id) { document.getElementById(id).style.display = 'none'; }
+
+function clip(t, msg) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(() => toast(msg)).catch(() => fbclip(t, msg));
+  } else fbclip(t, msg);
+}
+function fbclip(t, msg) {
+  const ta = document.createElement('textarea');
+  ta.value = t; ta.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); toast(msg); }
+  catch(_) { toast('Copy failed', 'err'); }
+  document.body.removeChild(ta);
+}
+
 let toastT;
-function toast(msg,type='ok'){const el=document.getElementById('toast');el.textContent=msg;el.style.background=type==='err'?'#ef4444':'#22c55e';el.style.color='white';el.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('on'),2500);}
-function esc(s){return String(s).replace(/'/g,"\\'")}
-function cflag(id){const m={'1':'🇷🇺','2':'🇺🇦','3':'🇰🇿','4':'🇨🇳','5':'🇵🇭','6':'🇲🇲','7':'🇮🇩','8':'🇲🇾','9':'🇰🇪','10':'🇹🇿','11':'🇻🇳','12':'🇰🇬','13':'🇺🇸','14':'🇮🇱','15':'🇭🇰','16':'🇵🇱','17':'🇬🇧','18':'🇮🇳','19':'🇳🇬','20':'🇧🇷','21':'🇪🇬','22':'🇲🇦','23':'🇿🇦','24':'🇩🇪','25':'🇫🇷'};return m[String(id)]||'🌐';}
-function sicon(c){const m={wa:'📱',tg:'✈️',ig:'📷',fb:'👤',tw:'🐦',go:'🔍',am:'🛒',yt:'▶️',tk:'🎵',nf:'🎬',wc:'💬',li:'💼',vi:'📹',sk:'💻',sp:'🎵',pa:'💳',pp:'💸',ub:'🚗',ok:'👥',vk:'💬',mm:'📞',npd:'💘',ape:'🧭',ipa:'🅰️',rpe:'🚖',ibo:'💬',tya:'🎮',avo:'📮',oql:'🟣',ews:'💬'};return m[c]||'📲';}
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = (type === 'err') ? '#ef4444' : '#22c55e';
+  el.style.color = 'white';
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), 2500);
+}
+
+function esc(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+const NAME_ISO = {
+  'Ukraine':'UA','Vietnam':'VN','Kuwait':'KW','Iran':'IR','Kazakhstan':'KZ',
+  'Russia':'RU','Philippines':'PH','Myanmar':'MM','Indonesia':'ID','Malaysia':'MY',
+  'Kenya':'KE','Tanzania':'TZ','Kyrgyzstan':'KG','USA':'US','United States':'US',
+  'Israel':'IL','Hong Kong':'HK','Poland':'PL','UK':'GB','United Kingdom':'GB',
+  'India':'IN','Nigeria':'NG','Brazil':'BR','Egypt':'EG','Morocco':'MA',
+  'South Africa':'ZA','Germany':'DE','France':'FR','Pakistan':'PK','Bangladesh':'BD',
+  'Sri Lanka':'LK','Nepal':'NP','Thailand':'TH','Cambodia':'KH','Laos':'LA',
+  'Singapore':'SG','Taiwan':'TW','Japan':'JP','South Korea':'KR','Iraq':'IQ',
+  'Saudi Arabia':'SA','UAE':'AE','Turkey':'TR','Ethiopia':'ET','Ghana':'GH',
+  'Cameroon':'CM','Congo':'CD','Zimbabwe':'ZW','Afghanistan':'AF','Albania':'AL',
+  'Algeria':'DZ','Angola':'AO','Argentina':'AR','Armenia':'AM','Australia':'AU',
+  'Austria':'AT','Azerbaijan':'AZ','Bahrain':'BH','Belarus':'BY','Belgium':'BE',
+  'Benin':'BJ','Bolivia':'BO','Bulgaria':'BG','Canada':'CA','Chile':'CL',
+  'Colombia':'CO','Croatia':'HR','Czech Republic':'CZ','Denmark':'DK',
+  'Dominican Republic':'DO','Ecuador':'EC','Estonia':'EE','Finland':'FI',
+  'Georgia':'GE','Greece':'GR','Guatemala':'GT','Hungary':'HU','Iceland':'IS',
+  'Ireland':'IE','Italy':'IT','Jamaica':'JM','Jordan':'JO','Latvia':'LV',
+  'Lebanon':'LB','Libya':'LY','Lithuania':'LT','Madagascar':'MG','Malta':'MT',
+  'Mexico':'MX','Moldova':'MD','Mongolia':'MN','Mozambique':'MZ','Namibia':'NA',
+  'Netherlands':'NL','New Zealand':'NZ','Nicaragua':'NI','Niger':'NE','Norway':'NO',
+  'Oman':'OM','Panama':'PA','Paraguay':'PY','Peru':'PE','Portugal':'PT',
+  'Qatar':'QA','Romania':'RO','Rwanda':'RW','Senegal':'SN','Serbia':'RS',
+  'Somalia':'SO','Spain':'ES','Sudan':'SD','Sweden':'SE','Switzerland':'CH',
+  'Syria':'SY','Tajikistan':'TJ','Togo':'TG','Tunisia':'TN','Turkmenistan':'TM',
+  'Uganda':'UG','Uruguay':'UY','Uzbekistan':'UZ','Venezuela':'VE','Yemen':'YE',
+  'Zambia':'ZM','China':'CN'
+};
+
+function isoToFlag(iso) {
+  if (!iso || iso.length !== 2) return '🌐';
+  return [...iso.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('');
+}
+
+function cflag(id) {
+  const c = allCountries.find(x => x.id === String(id));
+  if (c) { const iso = NAME_ISO[c.name]; if (iso) return isoToFlag(iso); }
+  const m = {
+    '1':'🇺🇦','2':'🇷🇺','3':'🇰🇿','4':'🇨🇳','5':'🇵🇭','6':'🇲🇲',
+    '7':'🇮🇩','8':'🇲🇾','9':'🇰🇪','10':'🇻🇳','12':'🇰🇬','13':'🇺🇸',
+    '14':'🇮🇱','15':'🇭🇰','16':'🇵🇱','17':'🇬🇧','18':'🇮🇳','19':'🇳🇬',
+    '20':'🇧🇷','21':'🇪🇬','22':'🇲🇦','23':'🇿🇦','24':'🇩🇪','25':'🇫🇷'
+  };
+  return m[String(id)] || '🌐';
+}
+
+function dialCodeByName(name) {
+  const m = {
+    'Russia':'+7','Ukraine':'+380','Kazakhstan':'+7','China':'+86','Philippines':'+63',
+    'Myanmar':'+95','Indonesia':'+62','Malaysia':'+60','Kenya':'+254','Vietnam':'+84',
+    'Kyrgyzstan':'+996','USA':'+1','United States':'+1','Israel':'+972','Hong Kong':'+852',
+    'Poland':'+48','UK':'+44','United Kingdom':'+44','India':'+91','Nigeria':'+234',
+    'Brazil':'+55','Egypt':'+20','Morocco':'+212','South Africa':'+27','Germany':'+49',
+    'France':'+33','Pakistan':'+92','Bangladesh':'+880','Sri Lanka':'+94','Nepal':'+977',
+    'Thailand':'+66','Cambodia':'+855','Singapore':'+65','Taiwan':'+886','Japan':'+81',
+    'South Korea':'+82','Iran':'+98','Iraq':'+964','Saudi Arabia':'+966','UAE':'+971',
+    'Turkey':'+90','Ethiopia':'+251','Ghana':'+233','Cameroon':'+237','Congo':'+243'
+  };
+  return m[name] || '';
+}
+
+function fmtPhone(phone, countryName) {
+  const dc = dialCodeByName(countryName);
+  if (!dc) return {display: phone, copy: phone};
+  if (phone.startsWith(dc)) return {display: dc + ' ' + phone.slice(dc.length), copy: phone.slice(dc.length).trim()};
+  return {display: dc + ' ' + phone, copy: phone};
+}
+
+const SVC_DOMAIN = {
+  wa:'whatsapp.com',   tg:'telegram.org',   ig:'instagram.com', fb:'facebook.com',
+  tw:'twitter.com',    go:'google.com',      am:'amazon.com',    yt:'youtube.com',
+  tk:'tiktok.com',     nf:'netflix.com',     wc:'wechat.com',    li:'linkedin.com',
+  vi:'viber.com',      sk:'snapchat.com',    sp:'spotify.com',   pa:'paytm.com',
+  pp:'paypal.com',     ub:'uber.com',        ok:'ok.ru',         vk:'vk.com',
+  mm:'microsoft.com',  npd:'bumble.com',     ape:'apple.com',    ipa:'apple.com',
+  rpe:'rapido.bike',   swr:'railyatri.in',   swl:'railyatri.in', swrail:'railyatri.in',
+  raione:'railyatri.in', fl:'flipkart.com',  mn:'meesho.com',
+  swiggy:'swiggy.com', zomato:'zomato.com',  jio:'jio.com',      airtel:'airtel.in',
+  phonepe:'phonepe.com', amazon:'amazon.in', google:'google.com', microsoft:'microsoft.com',
+  apple:'apple.com',   uber:'uber.com',      ola:'olacabs.com',  twitter:'twitter.com',
+  linkedin:'linkedin.com', snapchat:'snapchat.com', netflix:'netflix.com',
+  spotify:'spotify.com', paypal:'paypal.com', ol:'olacabs.com', zo:'zomato.com'
+};
+
+function sicon(code) {
+  const domain = SVC_DOMAIN[code] || SVC_DOMAIN[code.replace(/[0-9]/g, '')] || null;
+  if (domain) {
+    return '<img src="https://www.google.com/s2/favicons?domain=' + domain + '&sz=32" ' +
+           'style="width:20px;height:20px;border-radius:4px;object-fit:contain" ' +
+           'onerror="this.style.display=\'none\'" loading="lazy"><span style="display:none">📲</span>';
+  }
+  return '📲';
+}
 </script>
 </body>
 </html>

@@ -1,12 +1,15 @@
 from flask import Flask, render_template, request, jsonify, send_file
 from flask_cors import CORS
 from pymongo import MongoClient
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 from bson.objectid import ObjectId
 import io
 import requests
-import json
+import smtplib
+import random
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 app.secret_key = 'customer-secret-key-change-this'
@@ -24,6 +27,10 @@ verified_ids_collection = db['verified_ids']
 used_utrs_collection = db['used_utrs']
 users_collection = db['users']
 service_prices_collection = db['service_prices']
+otp_codes_collection = db['otp_codes']
+vn_vip_utrs_collection = db['vn_vip_utrs']
+cloud_accounts_collection = db['cloud_accounts']
+support_messages_collection = db['support_messages']
 
 # Initialize default config
 def init_config():
@@ -49,14 +56,60 @@ def is_utr_used(utr):
     return False
 
 def is_vip_utr(utr):
-    """Check if UTR is in VIP list (manual approval required)"""
+    """Check if UTR is in VIP list for ID selling (manual approval required)"""
     config = config_collection.find_one({})
     vip_utrs = config.get('vip_utrs', [])
-    
     for vip_utr in vip_utrs:
         if vip_utr.get('utr') == utr and vip_utr.get('active', True):
             return True
     return False
+
+def is_vn_vip_utr(utr):
+    """Check if UTR is in Virtual Number VIP UTR list"""
+    doc = vn_vip_utrs_collection.find_one({'utr': utr, 'active': True})
+    return doc is not None
+
+def send_otp_email(to_email, otp, purpose='register'):
+    """Send OTP email via SMTP. Returns (success, error_message)"""
+    try:
+        config = config_collection.find_one({})
+        smtp_email = config.get('smtp_email', '')
+        smtp_pass  = config.get('smtp_password', '')
+        if not smtp_email or not smtp_pass:
+            return False, 'SMTP not configured. Please contact admin.'
+        if purpose == 'register':
+            subject = 'OfflineSim – Email Verification OTP'
+            body = f'''Hello,
+
+Your OTP for email verification is:
+
+  {otp}
+
+This OTP is valid for 10 minutes. Do not share it with anyone.
+
+— OfflineSim Team'''
+        else:
+            subject = 'OfflineSim – Password Reset OTP'
+            body = f'''Hello,
+
+Your OTP for password reset is:
+
+  {otp}
+
+This OTP is valid for 10 minutes. Do not share it with anyone.
+
+— OfflineSim Team'''
+        msg = MIMEMultipart()
+        msg['From'] = smtp_email
+        msg['To']   = to_email
+        msg['Subject'] = subject
+        msg.attach(MIMEText(body, 'plain'))
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(smtp_email, smtp_pass)
+            server.sendmail(smtp_email, to_email, msg.as_string())
+        return True, ''
+    except Exception as e:
+        return False, str(e)
 
 def verify_payment_bharatpe(utr, expected_amount):
     """
@@ -169,7 +222,13 @@ def get_config():
         'whatsapp_link': config.get('whatsapp_link', 'https://wa.link/soyd4g'),
         'telegram_link': config.get('telegram_link', 'https://l1nq.link/?telegram=SUPERMAN_ADMIN1'),
         'normal_stock': normal_available,
-        'verified_stock': verified_available
+        'verified_stock': verified_available,
+        'op1_url':         config.get('op1_url', ''),
+        'op2_url':         config.get('op2_url', ''),
+        'default_markup':  config.get('default_markup', 5),
+        'sms_api_key':     config.get('sms_api_key', ''),
+        'temp_mail_price': config.get('temp_mail_price', 0),
+        'temp_gmail_price':config.get('temp_gmail_price', 0)
     })
 
 @app.route('/api/submit-order', methods=['POST'])
@@ -529,14 +588,134 @@ def order_details(order_id):
 
 @app.route('/api/sms-proxy')
 def sms_proxy():
-    """Server-side proxy for SMSindia API — avoids CORS issues"""
-    import requests as req
+    """Server-side proxy for GrizzlySMS API — avoids CORS issues"""
     params = request.args.to_dict()
+    action = params.get('action', '')
     try:
-        r = req.get('https://api.smsindia.pro/stubs/handler_api.php', params=params, timeout=15)
+        r = requests.get('https://api.grizzlysms.com/stubs/handler_api.php', params=params, timeout=8, allow_redirects=True)
+
+        # getCountries — normalize to {"id": "name"} format
+        if action == 'getCountries':
+            raw = r.json()
+            normalized = {str(v['id']): v.get('eng', str(v['id'])) for v in raw.values() if isinstance(v, dict) and v.get('visible', 1)}
+            return jsonify(normalized)
+
+        # getServices — normalize to {"code": "name"} format
+        if action in ('getServices', 'getServicesList'):
+            raw = r.json()
+            services_list = raw.get('services', raw) if isinstance(raw, dict) else raw
+            if isinstance(services_list, list):
+                normalized = {s['code']: s.get('name', s['code']) for s in services_list if 'code' in s}
+            else:
+                normalized = {k: (v if isinstance(v, str) else v.get('name', k)) for k, v in services_list.items()}
+            if normalized:
+                return jsonify(normalized)
+            # Empty response from GrizzlySMS — return fallback list
+            raise ValueError("Empty service list")
+
+        if action == 'getPrices':
+            return jsonify(r.json())
+
         return r.text, 200, {'Content-Type': 'text/plain'}
     except Exception as e:
+        # GrizzlySMS timeout/error — return fallback service list so UI doesn't break
+        if action in ('getServices', 'getServicesList'):
+            fallback = {
+                "wa":"WhatsApp","tg":"Telegram","go":"Google","fb":"Facebook",
+                "ig":"Instagram","am":"Amazon","pa":"Paytm","ipe":"PhonePe",
+                "fl":"Flipkart","jio":"Jio","air":"Airtel","ub":"Uber",
+                "ol":"Ola","sw":"Swiggy","zo":"Zomato","mm":"Microsoft",
+                "tw":"Twitter","li":"LinkedIn","nf":"Netflix","sp":"Spotify",
+                "yt":"YouTube","tk":"TikTok","sk":"Snapchat","ap":"Apple",
+                "vi":"Viber","wc":"WeChat","pp":"PayPal","vk":"VKontakte",
+                "swr":"RailOne","swl":"RailOne IRCTC","raione":"RailOne"
+            }
+            return jsonify(fallback)
         return str(e), 500
+
+@app.route('/api/op1-proxy')
+def op1_proxy():
+    """Server-side proxy for Operator 1 (Flask hubspot) — avoids CORS issues"""
+    config  = config_collection.find_one({}) or {}
+    op1_url = (config.get('op1_url') or '').rstrip('/')
+    if not op1_url:
+        return jsonify({'success': False, 'error': 'Operator 1 URL not configured'}), 400
+    endpoint = request.args.get('endpoint', 'buy_number')
+    params = {k: v for k, v in request.args.items() if k != 'endpoint'}
+    try:
+        r = requests.get(
+            f"{op1_url}/{endpoint}",
+            params=params,
+            headers={'ngrok-skip-browser-warning': 'true'},
+            timeout=20,
+            allow_redirects=True
+        )
+        try:
+            return jsonify(r.json())
+        except Exception:
+            return r.text, 200, {'Content-Type': 'text/plain'}
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/op2-proxy')
+def op2_proxy():
+    config  = config_collection.find_one({}) or {}
+    op2_url = (config.get('op2_url') or '').rstrip('/')
+    if not op2_url:
+        return jsonify({'error': True, 'message': 'Operator 2 URL not configured'}), 400
+    endpoint = request.args.get('endpoint', 'buy_number')
+    params   = {k: v for k, v in request.args.items() if k != 'endpoint'}
+    try:
+        r = requests.get(f"{op2_url}/{endpoint}", params=params,
+                         headers={'ngrok-skip-browser-warning': 'true'},
+                         timeout=30, allow_redirects=True)
+        try:    return jsonify(r.json())
+        except: return r.text, 200, {'Content-Type': 'text/plain'}
+    except Exception as e:
+        return jsonify({'error': True, 'message': str(e)}), 500
+
+@app.route('/api/mail-services')
+def mail_services():
+    """Fetch temp Gmail service list from smsbower"""
+    try:
+        r = requests.get(
+            'https://smsbower.page/stubs/handler_api.php',
+            params={'api_key': '5KzgI4KRHkIJ0Vis6BpHyYegKHXqVR34', 'action': 'getMailServicesList'},
+            timeout=15
+        )
+        raw = r.json()
+        services = raw if isinstance(raw, list) else raw.get('services', [])
+        normalized = [{'code': s.get('code', s.get('id', '')), 'name': s.get('name', '')} for s in services if s.get('code') or s.get('id')]
+        return jsonify({'success': True, 'services': normalized})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/mail-proxy', methods=['GET', 'POST'])
+def mail_tm_proxy():
+    """Server-side proxy for mail.tm API — mail.tm only allows CORS from *.mail.tm"""
+    path = request.args.get('path', '').strip('/')
+    allowed = {'domains', 'accounts', 'token', 'messages'}
+    if not path or any(seg not in allowed for seg in path.split('/') if seg):
+        return jsonify({'error': 'Invalid path'}), 400
+    params = {k: v for k, v in request.args.items() if k != 'path'}
+    headers = {}
+    if request.headers.get('Authorization'):
+        headers['Authorization'] = request.headers['Authorization']
+    try:
+        if request.method == 'POST':
+            r = requests.post(
+                'https://api.mail.tm/' + path,
+                json=request.get_json(silent=True) or {},
+                params=params, headers=headers, timeout=20
+            )
+        else:
+            r = requests.get(
+                'https://api.mail.tm/' + path,
+                params=params, headers=headers, timeout=20
+            )
+        return (r.text, r.status_code, {'Content-Type': r.headers.get('Content-Type', 'application/json')})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
 
 @app.route('/api/health')
 def health_check():
@@ -567,6 +746,29 @@ def health_check():
             'error': str(e)
         }), 500
 
+# ─── SEND OTP ────────────────────────────────────────────
+@app.route('/api/send-otp', methods=['POST'])
+def send_otp():
+    data    = request.json
+    email   = data.get('email', '').strip().lower()
+    purpose = data.get('purpose', 'register')  # 'register' or 'forgot'
+
+    if not email:
+        return jsonify({'success': False, 'error': 'Email is required.'})
+    if purpose == 'forgot':
+        if not users_collection.find_one({'email': email}):
+            return jsonify({'success': False, 'error': 'No account found with this email.'})
+
+    otp = str(random.randint(100000, 999999))
+    expires_at = datetime.now() + timedelta(minutes=10)
+    otp_codes_collection.delete_many({'email': email, 'purpose': purpose})
+    otp_codes_collection.insert_one({'email': email, 'otp': otp, 'purpose': purpose,
+                                     'expires_at': expires_at, 'verified': False})
+    ok, err = send_otp_email(email, otp, purpose)
+    if not ok:
+        return jsonify({'success': False, 'error': 'Failed to send OTP: ' + err})
+    return jsonify({'success': True, 'message': 'OTP sent to ' + email})
+
 # ─── USER REGISTER ───────────────────────────────────────
 @app.route('/api/register', methods=['POST'])
 def register():
@@ -575,14 +777,25 @@ def register():
     telegram  = data.get('telegram', '').strip()
     whatsapp  = data.get('whatsapp', '').strip()
     password  = data.get('password', '').strip()
+    otp       = data.get('otp', '').strip()
 
     if not email or not password:
-        return jsonify({'success': False, 'error': 'Email aur password required hai.'})
+        return jsonify({'success': False, 'error': 'Email and password are required.'})
     if len(password) < 6:
-        return jsonify({'success': False, 'error': 'Password kam se kam 6 characters ka hona chahiye.'})
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters.'})
     if users_collection.find_one({'email': email}):
-        return jsonify({'success': False, 'error': 'Yeh email already registered hai.'})
+        return jsonify({'success': False, 'error': 'This email is already registered.'})
 
+    # Verify OTP
+    record = otp_codes_collection.find_one({'email': email, 'purpose': 'register'})
+    if not record:
+        return jsonify({'success': False, 'error': 'OTP not found. Please request a new OTP.'})
+    if record['otp'] != otp:
+        return jsonify({'success': False, 'error': 'Invalid OTP. Please try again.'})
+    if datetime.now() > record['expires_at']:
+        return jsonify({'success': False, 'error': 'OTP expired. Please request a new one.'})
+
+    otp_codes_collection.delete_one({'_id': record['_id']})
     user = {
         'email': email,
         'telegram': telegram,
@@ -591,8 +804,36 @@ def register():
         'balance': 0,
         'created_at': datetime.now()
     }
-    result = users_collection.insert_one(user)
+    users_collection.insert_one(user)
     return jsonify({'success': True, 'message': 'Registration successful!'})
+
+# ─── FORGOT PASSWORD ──────────────────────────────────────
+@app.route('/api/forgot-password', methods=['POST'])
+def forgot_password():
+    data         = request.json
+    email        = data.get('email', '').strip().lower()
+    otp          = data.get('otp', '').strip()
+    new_password = data.get('new_password', '').strip()
+
+    if not email or not otp or not new_password:
+        return jsonify({'success': False, 'error': 'All fields are required.'})
+    if len(new_password) < 6:
+        return jsonify({'success': False, 'error': 'Password must be at least 6 characters.'})
+
+    record = otp_codes_collection.find_one({'email': email, 'purpose': 'forgot'})
+    if not record:
+        return jsonify({'success': False, 'error': 'OTP not found. Please request a new OTP.'})
+    if record['otp'] != otp:
+        return jsonify({'success': False, 'error': 'Invalid OTP. Please try again.'})
+    if datetime.now() > record['expires_at']:
+        return jsonify({'success': False, 'error': 'OTP expired. Please request a new one.'})
+
+    if not users_collection.find_one({'email': email}):
+        return jsonify({'success': False, 'error': 'No account found with this email.'})
+
+    otp_codes_collection.delete_one({'_id': record['_id']})
+    users_collection.update_one({'email': email}, {'$set': {'password': new_password}})
+    return jsonify({'success': True, 'message': 'Password reset successfully! Please login.'})
 
 # ─── USER LOGIN ──────────────────────────────────────────
 @app.route('/api/login', methods=['POST'])
@@ -602,11 +843,11 @@ def login():
     password = data.get('password', '').strip()
 
     if not email or not password:
-        return jsonify({'success': False, 'error': 'Email aur password required hai.'})
+        return jsonify({'success': False, 'error': 'Email and password are required.'})
 
     user = users_collection.find_one({'email': email, 'password': password})
     if not user:
-        return jsonify({'success': False, 'error': 'Email ya password galat hai.'})
+        return jsonify({'success': False, 'error': 'Incorrect email or password.'})
 
     return jsonify({
         'success': True,
@@ -632,13 +873,45 @@ def user_balance():
     except:
         return jsonify({'success': False, 'error': 'Invalid user id'})
 
-# ─── SERVICE PRICES (admin panel se set hoga) ─────────────
+# ─── DEDUCT BALANCE ──────────────────────────────────────
+@app.route('/api/deduct-balance', methods=['POST'])
+def deduct_balance():
+    data    = request.json
+    user_id = data.get('user_id', '')
+    amount  = float(data.get('amount', 0))
+    try:
+        user = users_collection.find_one({'_id': ObjectId(user_id)})
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'})
+        bal = float(user.get('balance', 0))
+        if bal < amount:
+            return jsonify({'success': False, 'error': 'Insufficient balance'})
+        users_collection.update_one({'_id': ObjectId(user_id)}, {'$inc': {'balance': -amount}})
+        user = users_collection.find_one({'_id': ObjectId(user_id)})
+        return jsonify({'success': True, 'new_balance': user.get('balance', 0)})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ─── REFUND BALANCE ───────────────────────────────────────
+@app.route('/api/refund-balance', methods=['POST'])
+def refund_balance():
+    data    = request.json
+    user_id = data.get('user_id', '')
+    amount  = float(data.get('amount', 0))
+    try:
+        users_collection.update_one({'_id': ObjectId(user_id)}, {'$inc': {'balance': amount}})
+        user = users_collection.find_one({'_id': ObjectId(user_id)})
+        return jsonify({'success': True, 'new_balance': user.get('balance', 0) if user else 0})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+# ─── SERVICE PRICES (set from admin panel) ────────────────
 @app.route('/api/service-prices')
 def get_service_prices():
     prices = list(service_prices_collection.find({}, {'_id': 0}))
     return jsonify({'success': True, 'prices': prices})
 
-# ─── RECHARGE — UTR submit, balance user ke account mein ──
+# ─── RECHARGE — UTR submit, add balance to user account ──
 @app.route('/api/recharge', methods=['POST'])
 def recharge():
     data    = request.json
@@ -646,40 +919,40 @@ def recharge():
     user_id = data.get('user_id', '')
 
     if not utr or len(utr) < 1 or len(utr) > 12:
-        return jsonify({'success': False, 'error': 'UTR 1-12 characters ka hona chahiye.'})
+        return jsonify({'success': False, 'error': 'UTR must be 1-12 characters.'})
     if not utr.replace(' ', '').isalnum():
-        return jsonify({'success': False, 'error': 'UTR sirf letters aur numbers ka hona chahiye.'})
+        return jsonify({'success': False, 'error': 'UTR must contain only letters and numbers.'})
 
     # Already used?
     if used_utrs_collection.find_one({'utr': utr}):
-        return jsonify({'success': False, 'error': 'Yeh UTR pehle already use ho chuka hai.'})
+        return jsonify({'success': False, 'error': 'This UTR has already been used.'})
 
     # Existing order?
     existing = orders_collection.find_one({'utr': utr})
     if existing:
         status = existing.get('status', 'pending')
         if status == 'approved':
-            return jsonify({'success': False, 'error': 'Yeh UTR pehle already use ho chuka hai.'})
+            return jsonify({'success': False, 'error': 'This UTR has already been used.'})
         if status == 'pending':
             return jsonify({'success': True, 'pending': True, 'vip': existing.get('is_vip', False),
-                            'message': 'Order already pending hai.'})
+                            'message': 'Order is already pending.'})
 
     # VIP UTR?
-    if is_vip_utr(utr):
+    if is_vn_vip_utr(utr):
         order = {
             'utr': utr, 'user_id': user_id, 'date': datetime.now(),
             'status': 'pending', 'is_vip': True, 'auto_approved': False, 'type': 'recharge'
         }
         orders_collection.insert_one(order)
         return jsonify({'success': True, 'pending': True, 'vip': True,
-                        'message': 'VIP UTR — manual approval hogi.'})
+                        'message': 'VIP UTR — manual approval required.'})
 
     # BharatPe verify
     success, message, actual_amount = verify_payment_bharatpe(utr, 1)
 
     if not success:
         if 'not found' in message.lower() or 'Payment not found' in message:
-            return jsonify({'success': False, 'error': 'Transaction nahi mila. UTR check karke dobara try karo.'})
+            return jsonify({'success': False, 'error': 'Transaction not found. Please check the UTR and try again.'})
         # Other errors → pending
         order = {
             'utr': utr, 'user_id': user_id, 'amount': 0, 'date': datetime.now(),
@@ -688,7 +961,7 @@ def recharge():
         }
         orders_collection.insert_one(order)
         return jsonify({'success': True, 'pending': True, 'vip': False,
-                        'message': 'Order manual verification ke liye submit ho gaya.'})
+                        'message': 'Order submitted for manual verification.'})
 
     # Auto approve — add balance
     try:
@@ -705,7 +978,7 @@ def recharge():
         user = users_collection.find_one({'_id': ObjectId(user_id)})
         return jsonify({'success': True, 'approved': True, 'amount': actual_amount,
                         'new_balance': user.get('balance', 0),
-                        'message': f'₹{actual_amount} balance add ho gaya!'})
+                        'message': f'₹{actual_amount} balance added successfully!'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -731,8 +1004,50 @@ def check_recharge_status():
     elif status == 'pending':
         return jsonify({'approved': False, 'pending': True, 'vip': order.get('is_vip', False)})
     elif status == 'rejected':
-        return jsonify({'approved': False, 'rejected': True, 'error': 'Order reject ho gaya.'})
+        return jsonify({'approved': False, 'rejected': True, 'error': 'Order has been rejected.'})
     return jsonify({'approved': False})
+
+# ─── CLOUD STOCK (public) ────────────────────────────────
+@app.route('/api/cloud-stock')
+def cloud_stock():
+    types = ['google-basic','google-pro','dropbox-basic','dropbox-plus','onedrive-basic','aws-starter']
+    result = {t: cloud_accounts_collection.count_documents({'service_type': t, 'sold': False}) for t in types}
+    return jsonify({'success': True, 'stock': result})
+
+# ─── SUPPORT CHAT (user-side) ─────────────────────────────
+@app.route('/api/support/send', methods=['POST'])
+def support_send():
+    data    = request.json
+    user_id = data.get('user_id', '').strip()
+    message = data.get('message', '').strip()
+    if not user_id or not message:
+        return jsonify({'success': False, 'error': 'Missing fields'})
+    support_messages_collection.insert_one({
+        'user_id': user_id,
+        'message': message,
+        'sender':  'user',
+        'time':    datetime.now(),
+        'read':    False
+    })
+    return jsonify({'success': True})
+
+@app.route('/api/support/inbox', methods=['POST'])
+def support_inbox():
+    data    = request.json
+    user_id = data.get('user_id', '').strip()
+    if not user_id:
+        return jsonify({'success': False, 'error': 'Missing user_id'})
+    msgs = list(support_messages_collection.find({'user_id': user_id}).sort('time', 1))
+    for m in msgs:
+        m['_id'] = str(m['_id'])
+        if isinstance(m.get('time'), datetime):
+            m['time'] = m['time'].isoformat()
+    # Mark admin messages as read
+    support_messages_collection.update_many(
+        {'user_id': user_id, 'sender': 'admin', 'read': False},
+        {'$set': {'read': True}}
+    )
+    return jsonify({'success': True, 'messages': msgs})
 
 # ─── INSTALL APP — APK download ───────────────────────────
 @app.route('/api/download-apk')
@@ -740,7 +1055,7 @@ def download_apk():
     config = config_collection.find_one({})
     apk_url = config.get('apk_url', '')
     if not apk_url:
-        return jsonify({'success': False, 'error': 'APK abhi available nahi hai.'}), 404
+        return jsonify({'success': False, 'error': 'APK is not available yet.'}), 404
     from flask import redirect
     return redirect(apk_url)
 
@@ -755,7 +1070,7 @@ if __name__ == '__main__':
     print(f"⚡ Auto Payment: ENABLED")
     print(f"👑 VIP UTR: ENABLED")
     print("="*50 + "\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=True, host='0.0.0.0', port=8000)
 
 
 # ─── VIRTUAL ADMIN PANEL ──────────────────────────────────
@@ -771,8 +1086,8 @@ def get_vn_config():
     prices = list(service_prices_collection.find({}, {'_id': 0}))
     return jsonify({
         'success': True,
-        'api_url': config.get('sms_api_url', 'https://api.smsindia.pro/stubs/handler_api.php'),
-        'api_key': config.get('sms_api_key', 'a362879eb1515c86208a58f8557c9a7a3ab0'),
+        'api_url': config.get('sms_api_url', 'https://api.grizzlysms.com/stubs/handler_api.php'),
+        'api_key': config.get('sms_api_key', '9f15743ed56779bfb281ec85a3d2ab27'),
         'qr_code': config.get('qr_code', ''),
         'upi_id': config.get('upi_id', ''),
         'whatsapp_link': config.get('whatsapp_link', ''),
@@ -788,9 +1103,9 @@ def update_api():
     api_url = data.get('api_url', '').strip()
     api_key = data.get('api_key', '').strip()
     if not api_url or not api_key:
-        return jsonify({'success': False, 'error': 'API URL aur API Key dono required hain.'})
+        return jsonify({'success': False, 'error': 'Both API URL and API Key are required.'})
     config_collection.update_one({}, {'$set': {'sms_api_url': api_url, 'sms_api_key': api_key}}, upsert=True)
-    return jsonify({'success': True, 'message': 'API settings save ho gayi!'})
+    return jsonify({'success': True, 'message': 'API settings saved!'})
 
 @app.route('/api/admin/update-payment', methods=['POST'])
 def update_payment():
@@ -799,7 +1114,7 @@ def update_payment():
     qr_code = data.get('qr_code', '').strip()
     upi_id  = data.get('upi_id', '').strip()
     config_collection.update_one({}, {'$set': {'qr_code': qr_code, 'upi_id': upi_id}}, upsert=True)
-    return jsonify({'success': True, 'message': 'Payment settings save ho gayi!'})
+    return jsonify({'success': True, 'message': 'Payment settings saved!'})
 
 @app.route('/api/admin/set-price', methods=['POST'])
 def set_price():
@@ -812,7 +1127,7 @@ def set_price():
     service_name = data.get('service_name', '')
     price        = data.get('price', 0)
     if not country_id or not operator or not service_code or not price:
-        return jsonify({'success': False, 'error': 'Sab fields required hain.'})
+        return jsonify({'success': False, 'error': 'All fields are required.'})
     service_prices_collection.update_one(
         {'country_id': country_id, 'operator': str(operator), 'service_code': service_code},
         {'$set': {
@@ -822,7 +1137,7 @@ def set_price():
         }},
         upsert=True
     )
-    return jsonify({'success': True, 'message': f'{service_name} ka price set ho gaya: ₹{price}'})
+    return jsonify({'success': True, 'message': f'Price set for {service_name}: ₹{price}'})
 
 @app.route('/api/admin/delete-price', methods=['POST'])
 def delete_price():
@@ -834,7 +1149,7 @@ def delete_price():
     service_prices_collection.delete_one({
         'country_id': country_id, 'operator': str(operator), 'service_code': service_code
     })
-    return jsonify({'success': True, 'message': 'Price delete ho gaya.'})
+    return jsonify({'success': True, 'message': 'Price deleted.'})
 
 @app.route('/api/admin/update-links', methods=['POST'])
 def update_links():
@@ -845,4 +1160,4 @@ def update_links():
     if 'telegram_link' in data: update['telegram_link'] = data['telegram_link'].strip()
     if 'apk_url'       in data: update['apk_url']       = data['apk_url'].strip()
     config_collection.update_one({}, {'$set': update}, upsert=True)
-    return jsonify({'success': True, 'message': 'Links update ho gaye!'})
+    return jsonify({'success': True, 'message': 'Links updated!'})
